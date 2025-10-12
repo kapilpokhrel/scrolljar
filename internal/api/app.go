@@ -2,6 +2,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,11 +19,18 @@ const (
 type Config struct {
 	Port int
 	Env  Environment
+	DB   struct {
+		URL          string
+		MaxOpenConns int
+		MaxIdleConns int
+		MaxIdleTime  time.Duration
+	}
 }
 
 type Application struct {
 	config Config
 	logger *slog.Logger
+	db     *sql.DB
 }
 
 func NewApplication(cfg Config, logger *slog.Logger) *Application {
@@ -42,4 +50,17 @@ func (app *Application) NewServer() *http.Server {
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
 	return server
+}
+
+func (app *Application) OpenDB() error {
+	db, err := sql.Open("pgx", app.config.DB.URL)
+	if err != nil {
+		return err
+	}
+	app.db = db
+	return nil
+}
+
+func (app *Application) Close() {
+	app.db.Close()
 }

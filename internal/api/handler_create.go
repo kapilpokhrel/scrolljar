@@ -60,6 +60,7 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 		Access     accessType     `json:"access"`
 		Expiry     expiryDuration `json:"expiry"`
 		CustomSlug string         `json:"custom_slug"`
+		Tags       []string       `json:"tags"`
 		Scrolls    []scroll       `json:"scrolls"`
 	}
 
