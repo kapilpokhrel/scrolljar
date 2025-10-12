@@ -4,8 +4,10 @@ go 1.25.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.6
+	github.com/joho/godotenv v1.5.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lmittmann/tint v1.1.2
+	github.com/matoous/go-nanoid/v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 

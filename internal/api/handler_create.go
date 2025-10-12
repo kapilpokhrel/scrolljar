@@ -7,28 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
-)
-
-type accessType int
-
-func (a accessType) string() (string, bool) {
-	switch a {
-	case 0:
-		return "public", true
-	case 1:
-		return "unlisted", true
-	case 2:
-		return "private", true
-	default:
-		return "", false
-	}
-}
-
-const (
-	accessPublic accessType = iota
-	accessUnlisted
-	accessPrivate
 )
 
 type expiryDuration time.Duration
@@ -48,25 +28,25 @@ func (d *expiryDuration) UnmarshalJSON(jsonValue []byte) error {
 	return nil
 }
 
-type scroll struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	Format  string `json:"format"`
-}
+const (
+	accessPublic int = iota
+	accessUnlisted
+	accessPrivate
+)
 
 func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name       string         `json:"name"`
-		Access     accessType     `json:"access"`
-		Expiry     expiryDuration `json:"expiry"`
-		CustomSlug string         `json:"custom_slug"`
-		Tags       []string       `json:"tags"`
-		Scrolls    []scroll       `json:"scrolls"`
+		Name    string            `json:"name"`
+		Access  int               `json:"access"`
+		Expiry  expiryDuration    `json:"expiry"`
+		Tags    []string          `json:"tags"`
+		Scrolls []database.Scroll `json:"scrolls"`
 	}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	v := validator.New()
@@ -77,7 +57,19 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 	}
 	if !v.Valid() {
 		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		return
 	}
 
+	jar := &database.ScrollJar{
+		Name:      input.Name,
+		Access:    input.Access,
+		ExpiresAt: time.Now().Add(time.Duration(input.Expiry)),
+		Tags:      input.Tags,
+	}
+
+	err = app.models.ScrollJar.Insert(jar)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusInternalServerError, err.Error())
+	}
 	fmt.Fprintf(w, "%+v\n", input)
 }

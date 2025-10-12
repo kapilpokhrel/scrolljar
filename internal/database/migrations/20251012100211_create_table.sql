@@ -2,8 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE scrolljar (
     id BIGSERIAL PRIMARY KEY,
-    short_id CHAR(8) UNIQUE NOT NULL,
-    slug VARCHAR(64),
+    slug CHAR(8) UNIQUE NOT NULL,
     name TEXT,
     access smallint NOT NULL DEFAULT 0,
     tags TEXT[],
@@ -25,6 +24,6 @@ CREATE TABLE scroll (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS scrolljar;
 DROP TABLE IF EXISTS scroll;
+DROP TABLE IF EXISTS scrolljar;
 -- +goose StatementEnd

@@ -26,6 +26,11 @@ func (app *Application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	}
 }
 
+func (app *Application) serverErrorResponse(w http.ResponseWriter, r *http.Request, status int, err error) {
+	app.logError(r, err)
+	app.errorResponse(w, r, status, err.Error())
+}
+
 func (app *Application) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprintf("the %s method is not supported", r.Method)
 	app.errorResponse(w, r, http.StatusMethodNotAllowed, errors.New(msg))

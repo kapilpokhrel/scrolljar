@@ -1,7 +1,7 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 )
 
@@ -10,8 +10,7 @@ func (app *Application) recoverPanic(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				w.Header().Set("Connection", "close")
-				app.logger.Error(fmt.Sprint(err))
-				app.errorResponse(w, r, http.StatusInternalServerError, "internal server error")
+				app.serverErrorResponse(w, r, http.StatusInternalServerError, errors.New("internal server error"))
 			}
 		}()
 		next.ServeHTTP(w, r)

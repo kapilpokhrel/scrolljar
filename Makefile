@@ -1,5 +1,5 @@
 GOOSE := goose
-MIGRATIONS_DIR := internal/db/migrations
+MIGRATIONS_DIR := internal/database/migrations
 APP_PATH := ./cmd/api/
 
 .PHONY: help
@@ -18,14 +18,15 @@ run:
 
 .PHONY: migrate-up
 migrate-up:
-	$(GOOSE) -dir $(MIGRATIONS_DIR) up
+	$(GOOSE) -dir $(MIGRATIONS_DIR) ${GOOSE_DRIVER} ${GOOSE_DBSTRING} up
 
 .PHONY: migrate-down
-	$(GOOSE) -dir $(MIGRATIONS_DIR) down
+migrate-down:
+	$(GOOSE) -dir $(MIGRATIONS_DIR) ${GOOSE_DRIVER} ${GOOSE_DBSTRING} down
 
 .PHONY: migrate-status
 migrate-status:
-	$(GOOSE) -dir $(MIGRATIONS_DIR) status
+	$(GOOSE) -dir $(MIGRATIONS_DIR) ${GOOSE_DRIVER} ${GOOSE_DBSTRING} status
 
 .PHONY: migrate-create
 migrate-create:

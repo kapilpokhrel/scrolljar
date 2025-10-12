@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
 type Environment string
@@ -30,13 +32,14 @@ type Config struct {
 type Application struct {
 	config Config
 	logger *slog.Logger
-	db     *sql.DB
+	models database.Models
 }
 
-func NewApplication(cfg Config, logger *slog.Logger) *Application {
+func NewApplication(cfg Config, logger *slog.Logger, db *sql.DB) *Application {
 	return &Application{
 		config: cfg,
 		logger: logger,
+		models: database.NewModels(db),
 	}
 }
 
@@ -50,17 +53,4 @@ func (app *Application) NewServer() *http.Server {
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
 	return server
-}
-
-func (app *Application) OpenDB() error {
-	db, err := sql.Open("pgx", app.config.DB.URL)
-	if err != nil {
-		return err
-	}
-	app.db = db
-	return nil
-}
-
-func (app *Application) Close() {
-	app.db.Close()
 }
