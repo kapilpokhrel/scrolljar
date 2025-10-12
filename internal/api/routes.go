@@ -13,5 +13,6 @@ func (app *Application) Routes() http.Handler {
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 	router.HandlerFunc(http.MethodPost, "/v1/create", app.createPostHandler)
-	return router
+
+	return app.recoverPanic(router)
 }

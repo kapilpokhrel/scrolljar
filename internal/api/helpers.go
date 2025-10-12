@@ -2,6 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"maps"
 	"net/http"
 )
@@ -20,4 +23,43 @@ func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelo
 	w.Write(jsonString)
 	w.Write([]byte("\n"))
 	return nil
+}
+
+func (app *Application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(dst)
+	if err == nil {
+		err = decoder.Decode(&struct{}{})
+		if !errors.Is(err, io.EOF) {
+			return errors.New("body contains more than one json payload")
+		}
+		return nil
+	}
+
+	// handle error
+	var (
+		syntaxError           *json.SyntaxError
+		unmarshalTypeError    *json.UnmarshalTypeError
+		invalidUnmarshalError *json.InvalidUnmarshalError
+		maxBytesError         *http.MaxBytesError
+	)
+
+	switch {
+	case errors.Is(err, io.EOF):
+		return errors.New("body is empty")
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		return errors.New("body contains badly formed JSON")
+	case errors.As(err, &maxBytesError):
+		return fmt.Errorf("body exceeds limit of %d bytes", maxBytesError.Limit)
+	case errors.As(err, &syntaxError):
+		return fmt.Errorf("body contains badly-formed JSON (at character %d)", syntaxError.Offset)
+	case errors.As(err, &unmarshalTypeError):
+		return fmt.Errorf("body contains incorrect json type for field %s, (at character %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+	case errors.As(err, &invalidUnmarshalError):
+		panic(err)
+	default:
+		return err
+	}
 }
