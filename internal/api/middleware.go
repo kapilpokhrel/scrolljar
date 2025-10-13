@@ -9,6 +9,7 @@ func (app *Application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
+				app.logger.Error("Internal server error", "error", err)
 				w.Header().Set("Connection", "close")
 				app.serverErrorResponse(w, r, http.StatusInternalServerError, errors.New("internal server error"))
 			}

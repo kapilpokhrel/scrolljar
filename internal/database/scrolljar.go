@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/matoous/go-nanoid/v2"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 type Scroll struct {
-	ID        int64     `json:"id"`
+	ID        int8      `json:"id"`
 	JarID     int64     `json:"-"`
 	Title     string    `json:"title,omitempty"`
 	Format    string    `json:"format,omitempty"`
@@ -42,13 +42,21 @@ func (m ScrollJarModel) Insert(sJ *ScrollJar) error {
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, slug, created_at, updated_at 
 	`
-	
+
+	expiresAt := func() any {
+		if !sJ.ExpiresAt.IsZero() {
+			return sJ.ExpiresAt
+		}
+		return nil
+	}()
+
 	for {
 		slug, err := gonanoid.Generate(Base62Chars, 8)
 		if err != nil {
 			return err
 		}
-		args := []any{slug, sJ.Name, sJ.Access, sJ.Tags, sJ.ExpiresAt}
+
+		args := []any{slug, sJ.Name, sJ.Access, sJ.Tags, expiresAt}
 
 		err = m.DB.QueryRow(query, args...).Scan(&sJ.ID, &sJ.Slug, &sJ.CreatedAt, &sJ.UpdatedAt)
 		var pgErr *pgconn.PgError
@@ -62,4 +70,14 @@ func (m ScrollJarModel) Insert(sJ *ScrollJar) error {
 			return err
 		}
 	}
+}
+
+func (m ScrollJarModel) InsertScroll(sJ *ScrollJar, scroll *Scroll) error {
+	query := `
+		INSERT INTO scroll (id, jar_id, title, format, content)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING jar_id, created_at, updated_at
+	`
+	args := []any{scroll.ID, sJ.ID, scroll.Title, scroll.Format, scroll.Content}
+	return m.DB.QueryRow(query, args...).Scan(&scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
 }
