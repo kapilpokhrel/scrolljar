@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
@@ -54,7 +55,7 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 	v := validator.New()
 	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) >= time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
 	v.Check(input.Access <= accessPrivate, "access", "access type can be one of 0, 1 and 2")
-	v.Check(len(input.Scrolls) <= 255, "scrolls", "no of scrolls can't be greater than 255")
+	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
 	for i, scroll := range input.Scrolls {
 		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
 	}
@@ -69,7 +70,9 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 		Tags:   input.Tags,
 	}
 	if input.Expiry.Duration != nil {
-		jar.ExpiresAt = time.Now().Add(*input.Expiry.Duration)
+		jar.ExpiresAt = pgtype.Timestamptz{
+			Time: time.Now().Add(*input.Expiry.Duration),
+		}
 	}
 	err = app.models.ScrollJar.Insert(jar)
 	if err != nil {
@@ -78,16 +81,16 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 
 	scrollURIs := []string{}
 	for i, scroll := range input.Scrolls {
-		scroll.ID = int8(i);
-		err = app.models.ScrollJar.InsertScroll(jar, &scroll)
+		scroll.ID = int8(i + 1)
+		err = app.models.ScrollJar.InsertScroll(jar.ID, &scroll)
 		if err != nil {
 			panic(err)
 		}
 		scrollURIs = append(scrollURIs, fmt.Sprintf("https://scrolljar.com/%s/%d", jar.Slug, scroll.ID))
 	}
-	
+
 	outputPayload := envelope{
-		"uri": fmt.Sprintf("https://scrolljar.com/%s", jar.Slug),
+		"uri":     fmt.Sprintf("https://scrolljar.com/%s", jar.Slug),
 		"scrolls": scrollURIs,
 	}
 	app.writeJSON(w, http.StatusOK, outputPayload, nil)

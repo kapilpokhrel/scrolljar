@@ -7,9 +7,47 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"strconv"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
 type envelope map[string]any
+
+type slugs struct {
+	jarSlug  string
+	scrollID int8
+}
+
+const (
+	BaseURI string = "https://scrolljar.com"
+)
+
+func (app *Application) readSlugParam(r *http.Request) (slugs, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+
+	var scrollID int64
+	var err error
+	if len(params.ByName("scrollID")) > 0 {
+		scrollID, err = strconv.ParseInt(params.ByName("scrollID"), 10, 8)
+		if err != nil {
+			return slugs{}, err
+		}
+	}
+	return slugs{
+		jarSlug:  params.ByName("jarSlug"),
+		scrollID: int8(scrollID),
+	}, nil
+}
+
+func (app *Application) getJarURI(jar *database.ScrollJar) {
+	jar.URI = fmt.Sprintf("%s/%s", BaseURI, jar.Slug)
+}
+
+func (app *Application) getScrollURI(scroll *database.Scroll) {
+	scroll.URI = fmt.Sprintf("%s/%s/%d", BaseURI, scroll.Jar.Slug, scroll.ID)
+}
 
 func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	jsonString, err := json.MarshalIndent(data, "", "  ")

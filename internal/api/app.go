@@ -2,12 +2,12 @@
 package api
 
 import (
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
@@ -35,7 +35,7 @@ type Application struct {
 	models database.Models
 }
 
-func NewApplication(cfg Config, logger *slog.Logger, db *sql.DB) *Application {
+func NewApplication(cfg Config, logger *slog.Logger, db *pgx.Conn) *Application {
 	return &Application{
 		config: cfg,
 		logger: logger,

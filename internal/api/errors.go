@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 )
@@ -26,17 +25,17 @@ func (app *Application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	}
 }
 
-func (app *Application) serverErrorResponse(w http.ResponseWriter, r *http.Request, status int, err error) {
+func (app *Application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logError(r, err)
-	app.errorResponse(w, r, status, err.Error())
+	app.errorResponse(w, r, http.StatusInternalServerError, err.Error())
 }
 
 func (app *Application) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprintf("the %s method is not supported", r.Method)
-	app.errorResponse(w, r, http.StatusMethodNotAllowed, errors.New(msg))
+	app.errorResponse(w, r, http.StatusMethodNotAllowed, msg)
 }
 
 func (app *Application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
 	msg := "resources not found"
-	app.errorResponse(w, r, http.StatusNotFound, errors.New(msg))
+	app.errorResponse(w, r, http.StatusNotFound, msg)
 }

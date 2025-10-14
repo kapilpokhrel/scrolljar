@@ -12,7 +12,8 @@ func (app *Application) Routes() http.Handler {
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
-	router.HandlerFunc(http.MethodPost, "/v1/create", app.createPostHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/scrolljar", app.createPostHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/scrolljar/:jarSlug", app.GetScrollJarHandler)
 
 	return app.recoverPanic(router)
 }

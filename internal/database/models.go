@@ -1,13 +1,19 @@
-// Package db creates a database models and manages CRUD
+// Package database creates a database models and manages CRUD
 package database
 
-import "database/sql"
+import (
+	"errors"
+
+	"github.com/jackc/pgx/v5"
+)
+
+var ErrNoRecord = errors.New("record not found")
 
 type Models struct {
 	ScrollJar ScrollJarModel
 }
 
-func NewModels(db *sql.DB) Models {
+func NewModels(db *pgx.Conn) Models {
 	return Models{
 		ScrollJar: ScrollJarModel{db},
 	}

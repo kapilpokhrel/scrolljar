@@ -1,12 +1,13 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/kapilpokhrel/scrolljar/internal/api"
@@ -34,12 +35,12 @@ func main() {
 	cfg := parseFlags()
 
 	logger.Info(fmt.Sprintf("Connecting to database at %s", cfg.DB.URL))
-	db, err := sql.Open("pgx", cfg.DB.URL)
+	db, err := pgx.Connect(context.Background(), cfg.DB.URL)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(-1)
 	}
-	defer db.Close()
+	defer db.Close(context.Background())
 
 	app := api.NewApplication(cfg, logger, db)
 	server := app.NewServer()
