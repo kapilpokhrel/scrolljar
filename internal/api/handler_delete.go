@@ -7,12 +7,12 @@ import (
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) deleteScrollJarHandler(w http.ResponseWriter, r *http.Request) {
 	id := app.readIDParam(r)
 	jar := database.ScrollJar{
 		ID: id,
 	}
-	err := app.models.ScrollJar.Get(&jar)
+	err := app.models.ScrollJar.Delete(&jar)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -22,33 +22,21 @@ func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-	app.getJarURI(&jar)
 
-	scrolls, err := app.models.ScrollJar.GetAllScrolls(&jar)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-	for i := range len(scrolls) {
-		app.getScrollURI(scrolls[i])
-	}
-
-	env := envelope{"scrolljar": jar}
-	env["scrolls"] = scrolls
-
+	env := envelope{"message": "scrolljar deleted sucessfully"}
 	err = app.writeJSON(w, http.StatusOK, env, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
-func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) deleteScrollHandler(w http.ResponseWriter, r *http.Request) {
 	id := app.readIDParam(r)
 	scroll := database.Scroll{
 		ID: id,
 	}
 
-	err := app.models.ScrollJar.GetScroll(&scroll)
+	err := app.models.ScrollJar.DeleteScroll(&scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -58,10 +46,8 @@ func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	app.getScrollURI(&scroll)
 
-	env := envelope{"scroll": scroll}
-
+	env := envelope{"message": "scroll deleted sucessfully"}
 	err = app.writeJSON(w, http.StatusOK, env, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

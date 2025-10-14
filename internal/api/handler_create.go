@@ -36,7 +36,7 @@ const (
 	accessPrivate
 )
 
-func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string            `json:"name"`
 		Access   int               `json:"access"`
@@ -83,17 +83,18 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 	}
 	err = app.models.ScrollJar.Insert(jar)
 	if err != nil {
-		panic(err)
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 
 	app.getJarURI(jar)
 	scrollURIs := []string{}
-	for i, scroll := range input.Scrolls {
-		scroll.ID = int8(i + 1)
+	for _, scroll := range input.Scrolls {
 		scroll.Jar = jar
 		err = app.models.ScrollJar.InsertScroll(&scroll)
 		if err != nil {
-			panic(err)
+			app.serverErrorResponse(w, r, err)
+			return
 		}
 		app.getScrollURI(&scroll)
 		scrollURIs = append(scrollURIs, scroll.URI)
@@ -104,4 +105,62 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 		"scrolls": scrollURIs,
 	}
 	app.writeJSON(w, http.StatusOK, outputPayload, nil)
+}
+
+func (app *Application) postCreateScrollHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+		Format  string `json:"format"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	id := app.readIDParam(r)
+
+	jar := database.ScrollJar{
+		ID: id,
+	}
+	err = app.models.ScrollJar.Get(&jar)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrNoRecord):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	v := validator.New()
+	v.Check(len(input.Content) > 0, "content", "content can't be empty")
+	if !v.Valid() {
+		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		return
+	}
+
+	scroll := database.Scroll{
+		Title:   input.Title,
+		Content: input.Content,
+		Format:  input.Format,
+		Jar:     &jar,
+	}
+
+	err = app.models.ScrollJar.InsertScroll(&scroll)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	app.getScrollURI(&scroll)
+
+	env := envelope{"scroll": scroll}
+
+	err = app.writeJSON(w, http.StatusOK, env, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }

@@ -7,7 +7,6 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"strconv"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -15,11 +14,6 @@ import (
 )
 
 type envelope map[string]any
-
-type slugs struct {
-	jarID    string
-	scrollID int8
-}
 
 const (
 	BaseURI string = "https://scrolljar.com"
@@ -35,21 +29,9 @@ func verifyPassword(password, hash string) bool {
 	return err == nil
 }
 
-func (app *Application) readSlugParam(r *http.Request) (slugs, error) {
+func (app *Application) readIDParam(r *http.Request) string {
 	params := httprouter.ParamsFromContext(r.Context())
-
-	var scrollID int64
-	var err error
-	if len(params.ByName("scrollID")) > 0 {
-		scrollID, err = strconv.ParseInt(params.ByName("scrollID"), 10, 8)
-		if err != nil {
-			return slugs{}, err
-		}
-	}
-	return slugs{
-		jarID:    params.ByName("jarID"),
-		scrollID: int8(scrollID),
-	}, nil
+	return params.ByName("id")
 }
 
 func (app *Application) getJarURI(jar *database.ScrollJar) {
@@ -57,7 +39,7 @@ func (app *Application) getJarURI(jar *database.ScrollJar) {
 }
 
 func (app *Application) getScrollURI(scroll *database.Scroll) {
-	scroll.URI = fmt.Sprintf("%s/jar/%s/scroll/%d", BaseURI, scroll.Jar.ID, scroll.ID)
+	scroll.URI = fmt.Sprintf("%s/scroll/%s", BaseURI, scroll.ID)
 }
 
 func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {

@@ -12,14 +12,13 @@ CREATE TABLE scrolljar (
 );
 
 CREATE TABLE scroll (
-    id smallint NOT NULL,
+    id CHAR(8) PRIMARY KEY,
     jar_id CHAR(8) NOT NULL REFERENCES scrolljar(id) ON DELETE CASCADE,
     title TEXT,
     format TEXT,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY(id, jar_id)
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 -- +goose StatementEnd
 

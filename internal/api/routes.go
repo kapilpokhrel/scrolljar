@@ -12,10 +12,13 @@ func (app *Application) Routes() http.Handler {
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
-	router.HandlerFunc(http.MethodPost, "/v1/jar", app.createPostHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/jar/:jarID", app.getScrollJarHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/jar/:jarID/scroll/:scrollID", app.getScrollHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/jar/:jarID/scroll/:scrollID", app.updatePatchHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/jar", app.postCreateScrollJarHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/scroll/:id", app.postCreateScrollHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/jar/:id", app.getScrollJarHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/scroll/:id", app.getScrollHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/scroll/:id", app.patchScrollHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/jar/:id", app.deleteScrollJarHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/scroll/:id", app.deleteScrollHandler)
 
 	return app.recoverPanic(router)
 }

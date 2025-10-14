@@ -7,7 +7,7 @@ import (
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-func (app *Application) updatePatchHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title   *string `json:"title"`
 		Content *string `json:"content"`
@@ -20,18 +20,9 @@ func (app *Application) updatePatchHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	slugs, err := app.readSlugParam(r)
-	if err != nil || slugs.scrollID == 0 {
-		app.notFoundResponse(w, r)
-		return
-	}
-
-	jar := database.ScrollJar{
-		ID: slugs.jarID,
-	}
+	id := app.readIDParam(r)
 	scroll := database.Scroll{
-		ID:  slugs.scrollID,
-		Jar: &jar,
+		ID: id,
 	}
 
 	err = app.models.ScrollJar.GetScroll(&scroll)

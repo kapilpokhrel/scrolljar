@@ -14,7 +14,7 @@ import (
 const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 type Scroll struct {
-	ID        int8               `json:"id"`
+	ID        string             `json:"id"`
 	JarID     string             `json:"jarid"`
 	Title     string             `json:"title,omitempty"`
 	Format    string             `json:"format,omitempty"`
@@ -74,16 +74,26 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 	query := `
 		INSERT INTO scroll (id, jar_id, title, format, content)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING jar_id, created_at, updated_at
+		RETURNING id, jar_id, created_at, updated_at
 	`
-	args := []any{scroll.ID, scroll.Jar.ID, scroll.Title, scroll.Format, scroll.Content}
-	err := m.DB.QueryRow(context.Background(), query, args...).Scan(&scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
+	for {
+		slug, err := gonanoid.Generate(Base62Chars, 8)
+		if err != nil {
+			return err
+		}
 
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return ErrNoRecord
-	default:
-		return err
+		args := []any{slug, scroll.Jar.ID, scroll.Title, scroll.Format, scroll.Content}
+		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&scroll.ID, &scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
+		var pgErr *pgconn.PgError
+		switch {
+		case errors.As(err, &pgErr):
+			if pgErr.Code == "23505" && pgErr.ConstraintName == "scroll_pkey" {
+				continue
+			}
+			return pgErr
+		default:
+			return err
+		}
 	}
 }
 
@@ -130,13 +140,27 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	return scrolls, nil
 }
 
+func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM scroll
+		WHERE jar_id = $1
+	`
+	var count int
+	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
 		SELECT jar_id, title, format, content, created_at, updated_at
 		FROM scroll
-		WHERE jar_id = $1 AND id = $2
+		WHERE id = $1
 	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
+	err := m.DB.QueryRow(context.Background(), query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -149,7 +173,7 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 	query := `
 		UPDATE scroll
 		SET title = $1, format = $2, content = $3
-		WHERE id = $4 AND jar_id = $5 AND updated_at = $6
+		WHERE id = $4 AND updated_at = $5
 		RETURNING updated_at
 	`
 
@@ -157,11 +181,41 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 		context.Background(),
 		query,
 		scroll.Title, scroll.Format, scroll.Content,
-		scroll.ID, scroll.Jar.ID, scroll.UpdatedAt,
+		scroll.ID, scroll.UpdatedAt,
 	).Scan(&scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrEditConflict
+	default:
+		return err
+	}
+}
+
+func (m ScrollJarModel) DeleteScroll(scroll *Scroll) error {
+	query := `
+		DELETE FROM scroll
+		WHERE id = $1
+	`
+
+	result, err := m.DB.Exec(context.Background(), query, scroll.ID)
+	switch {
+	case result.RowsAffected() == 0:
+		return ErrNoRecord
+	default:
+		return err
+	}
+}
+
+func (m ScrollJarModel) Delete(jar *ScrollJar) error {
+	query := `
+		DELETE FROM scrolljar
+		WHERE id = $1
+	`
+
+	result, err := m.DB.Exec(context.Background(), query, jar.ID)
+	switch {
+	case result.RowsAffected() == 0:
+		return ErrNoRecord
 	default:
 		return err
 	}

@@ -53,7 +53,9 @@ EXECUTE FUNCTION ping_parent('scrolljar', 'jar_id');
 DROP TRIGGER IF EXISTS set_scrolljar_timestamp_updated_at ON scrolljar;
 DROP TRIGGER IF EXISTS set_scroll_timestamp_updated_at ON scroll;
 DROP TRIGGER IF EXISTS ping_scrolljar_on_scrollchange_trigger ON scroll;
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 DROP FUNCTION IF EXISTS set_timestamp();
 DROP FUNCTION IF EXISTS ping_parent();
 -- +goose StatementEnd
