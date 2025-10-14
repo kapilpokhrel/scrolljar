@@ -79,18 +79,21 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 		panic(err)
 	}
 
+	app.getJarURI(jar)
 	scrollURIs := []string{}
 	for i, scroll := range input.Scrolls {
 		scroll.ID = int8(i + 1)
-		err = app.models.ScrollJar.InsertScroll(jar.ID, &scroll)
+		scroll.Jar = jar
+		err = app.models.ScrollJar.InsertScroll(&scroll)
 		if err != nil {
 			panic(err)
 		}
-		scrollURIs = append(scrollURIs, fmt.Sprintf("https://scrolljar.com/%s/%d", jar.Slug, scroll.ID))
+		app.getScrollURI(&scroll)
+		scrollURIs = append(scrollURIs, scroll.URI)
 	}
 
 	outputPayload := envelope{
-		"uri":     fmt.Sprintf("https://scrolljar.com/%s", jar.Slug),
+		"uri":     jar.URI,
 		"scrolls": scrollURIs,
 	}
 	app.writeJSON(w, http.StatusOK, outputPayload, nil)

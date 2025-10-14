@@ -1,8 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE scrolljar (
-    id BIGSERIAL PRIMARY KEY,
-    slug CHAR(8) UNIQUE NOT NULL,
+    id CHAR(8) PRIMARY KEY,
     name TEXT,
     access smallint NOT NULL DEFAULT 0,
     tags TEXT[],
@@ -13,7 +12,7 @@ CREATE TABLE scrolljar (
 
 CREATE TABLE scroll (
     id smallint NOT NULL,
-    jar_id BIGINT NOT NULL REFERENCES scrolljar(id) ON DELETE CASCADE,
+    jar_id CHAR(8) NOT NULL REFERENCES scrolljar(id) ON DELETE CASCADE,
     title TEXT,
     format TEXT,
     content TEXT NOT NULL,

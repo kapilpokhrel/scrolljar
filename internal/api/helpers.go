@@ -16,7 +16,7 @@ import (
 type envelope map[string]any
 
 type slugs struct {
-	jarSlug  string
+	jarID    string
 	scrollID int8
 }
 
@@ -36,17 +36,17 @@ func (app *Application) readSlugParam(r *http.Request) (slugs, error) {
 		}
 	}
 	return slugs{
-		jarSlug:  params.ByName("jarSlug"),
+		jarID:    params.ByName("jarID"),
 		scrollID: int8(scrollID),
 	}, nil
 }
 
 func (app *Application) getJarURI(jar *database.ScrollJar) {
-	jar.URI = fmt.Sprintf("%s/%s", BaseURI, jar.Slug)
+	jar.URI = fmt.Sprintf("%s/%s", BaseURI, jar.ID)
 }
 
 func (app *Application) getScrollURI(scroll *database.Scroll) {
-	scroll.URI = fmt.Sprintf("%s/%s/%d", BaseURI, scroll.Jar.Slug, scroll.ID)
+	scroll.URI = fmt.Sprintf("%s/%s/%d", BaseURI, scroll.Jar.ID, scroll.ID)
 }
 
 func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {

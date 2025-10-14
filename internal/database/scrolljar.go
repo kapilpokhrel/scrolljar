@@ -15,7 +15,7 @@ const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 type Scroll struct {
 	ID        int8               `json:"id"`
-	JarID     int64              `json:"-"`
+	JarID     string             `json:"jarid"`
 	Title     string             `json:"title,omitempty"`
 	Format    string             `json:"format,omitempty"`
 	Content   string             `json:"content,omitempty"`
@@ -26,8 +26,7 @@ type Scroll struct {
 }
 
 type ScrollJar struct {
-	ID        int64 `json:"-"`
-	Slug      string
+	ID        string                   `json:"id"`
 	Name      string                   `json:"name,omitempty"`
 	Access    int                      `json:"access"`
 	Tags      pgtype.FlatArray[string] `json:"tags"`
@@ -43,9 +42,9 @@ type ScrollJarModel struct {
 
 func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 	query := `
-		INSERT INTO scrolljar (slug, name, access, tags, expires_at)
+		INSERT INTO scrolljar (id, name, access, tags, expires_at)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, slug, created_at, updated_at 
+		RETURNING id, created_at, updated_at 
 	`
 
 	for {
@@ -56,11 +55,11 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 
 		args := []any{slug, jar.Name, jar.Access, jar.Tags, jar.ExpiresAt}
 
-		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&jar.ID, &jar.Slug, &jar.CreatedAt, &jar.UpdatedAt)
+		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&jar.ID, &jar.CreatedAt, &jar.UpdatedAt)
 		var pgErr *pgconn.PgError
 		switch {
 		case errors.As(err, &pgErr):
-			if pgErr.Code == "23505" && pgErr.ConstraintName == "scrolljar_slug_key" {
+			if pgErr.Code == "23505" && pgErr.ConstraintName == "scrolljar_pkey" {
 				continue
 			}
 			return pgErr
@@ -70,13 +69,13 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 	}
 }
 
-func (m ScrollJarModel) InsertScroll(jarID int64, scroll *Scroll) error {
+func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 	query := `
 		INSERT INTO scroll (id, jar_id, title, format, content)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING jar_id, created_at, updated_at
 	`
-	args := []any{scroll.ID, jarID, scroll.Title, scroll.Format, scroll.Content}
+	args := []any{scroll.ID, scroll.Jar.ID, scroll.Title, scroll.Format, scroll.Content}
 	err := m.DB.QueryRow(context.Background(), query, args...).Scan(&scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
 
 	switch {
@@ -89,12 +88,12 @@ func (m ScrollJarModel) InsertScroll(jarID int64, scroll *Scroll) error {
 
 func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	query := `
-		SELECT id, name, tags, expires_at, created_at, updated_at
+		SELECT name, tags, expires_at, created_at, updated_at
 		FROM scrolljar
-		WHERE slug = $1
+		WHERE id = $1
 	`
 
-	err := m.DB.QueryRow(context.Background(), query, jar.Slug).Scan(&jar.ID, &jar.Name, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
+	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&jar.Name, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -132,11 +131,11 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
-		SELECT title, format, created_at, updated_at
+		SELECT jar_id, title, format, created_at, updated_at
 		FROM scroll
 		WHERE jar_id = $1 AND id = $2
 	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
+	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -151,7 +150,7 @@ func (m ScrollJarModel) GetScrollContent(scroll *Scroll) error {
 		FROM scroll
 		WHERE jar_id = $1 AND id = $2
 	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.Content)
+	err := m.DB.QueryRow(context.Background(), query, scroll.JarID, scroll.ID).Scan(&scroll.Content)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
