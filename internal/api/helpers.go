@@ -53,11 +53,11 @@ func (app *Application) readSlugParam(r *http.Request) (slugs, error) {
 }
 
 func (app *Application) getJarURI(jar *database.ScrollJar) {
-	jar.URI = fmt.Sprintf("%s/%s", BaseURI, jar.ID)
+	jar.URI = fmt.Sprintf("%s/jar/%s", BaseURI, jar.ID)
 }
 
 func (app *Application) getScrollURI(scroll *database.Scroll) {
-	scroll.URI = fmt.Sprintf("%s/%s/%d", BaseURI, scroll.Jar.ID, scroll.ID)
+	scroll.URI = fmt.Sprintf("%s/jar/%s/scroll/%d", BaseURI, scroll.Jar.ID, scroll.ID)
 }
 
 func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {

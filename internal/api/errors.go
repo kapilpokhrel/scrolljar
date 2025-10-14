@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 )
 
 // This file serves as wrapper to send json error
@@ -27,6 +28,7 @@ func (app *Application) errorResponse(w http.ResponseWriter, r *http.Request, st
 
 func (app *Application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logError(r, err)
+	app.logger.Error(string(debug.Stack()))
 	app.errorResponse(w, r, http.StatusInternalServerError, err.Error())
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-func (app *Application) GetScrollJarHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Request) {
 	slugs, err := app.readSlugParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
@@ -47,7 +47,7 @@ func (app *Application) GetScrollJarHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (app *Application) GetScrollHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request) {
 	slugs, err := app.readSlugParam(r)
 	if err != nil || slugs.scrollID == 0 {
 		app.notFoundResponse(w, r)

@@ -7,7 +7,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var ErrNoRecord = errors.New("record not found")
+var (
+	ErrNoRecord     = errors.New("record not found")
+	ErrEditConflict = errors.New("edit confict")
+)
 
 type Models struct {
 	ScrollJar ScrollJarModel

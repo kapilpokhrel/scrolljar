@@ -144,3 +144,25 @@ func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 		return err
 	}
 }
+
+func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
+	query := `
+		UPDATE scroll
+		SET title = $1, format = $2, content = $3
+		WHERE id = $4 AND jar_id = $5 AND updated_at = $6
+		RETURNING updated_at
+	`
+
+	err := m.DB.QueryRow(
+		context.Background(),
+		query,
+		scroll.Title, scroll.Format, scroll.Content,
+		scroll.ID, scroll.Jar.ID, scroll.UpdatedAt,
+	).Scan(&scroll.UpdatedAt)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return ErrEditConflict
+	default:
+		return err
+	}
+}
