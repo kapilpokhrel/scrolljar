@@ -11,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type envelope map[string]any
@@ -23,6 +24,16 @@ type slugs struct {
 const (
 	BaseURI string = "https://scrolljar.com"
 )
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	return string(bytes), err
+}
+
+func verifyPassword(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
 
 func (app *Application) readSlugParam(r *http.Request) (slugs, error) {
 	params := httprouter.ParamsFromContext(r.Context())

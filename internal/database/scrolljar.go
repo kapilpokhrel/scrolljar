@@ -26,14 +26,15 @@ type Scroll struct {
 }
 
 type ScrollJar struct {
-	ID        string                   `json:"id"`
-	Name      string                   `json:"name,omitempty"`
-	Access    int                      `json:"access"`
-	Tags      pgtype.FlatArray[string] `json:"tags"`
-	ExpiresAt pgtype.Timestamptz       `json:"expires_at"`
-	CreatedAt pgtype.Timestamptz       `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz       `json:"-"`
-	URI       string                   `json:"uri"`
+	ID           string                   `json:"id"`
+	Name         string                   `json:"name,omitempty"`
+	Access       int                      `json:"access"`
+	PasswordHash string                   `json:"-"`
+	Tags         pgtype.FlatArray[string] `json:"tags"`
+	ExpiresAt    pgtype.Timestamptz       `json:"expires_at"`
+	CreatedAt    pgtype.Timestamptz       `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz       `json:"-"`
+	URI          string                   `json:"uri"`
 }
 
 type ScrollJarModel struct {
@@ -42,8 +43,8 @@ type ScrollJarModel struct {
 
 func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 	query := `
-		INSERT INTO scrolljar (id, name, access, tags, expires_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO scrolljar (id, name, access, password_hash, tags, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at, updated_at 
 	`
 
@@ -53,7 +54,7 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 			return err
 		}
 
-		args := []any{slug, jar.Name, jar.Access, jar.Tags, jar.ExpiresAt}
+		args := []any{slug, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt}
 
 		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&jar.ID, &jar.CreatedAt, &jar.UpdatedAt)
 		var pgErr *pgconn.PgError
@@ -88,12 +89,12 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 
 func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	query := `
-		SELECT name, tags, expires_at, created_at, updated_at
+		SELECT name, access, password_hash, tags, expires_at, created_at, updated_at
 		FROM scrolljar
 		WHERE id = $1
 	`
 
-	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&jar.Name, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
+	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&jar.Name, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -131,26 +132,11 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
-		SELECT jar_id, title, format, created_at, updated_at
+		SELECT jar_id, title, format, content, created_at, updated_at
 		FROM scroll
 		WHERE jar_id = $1 AND id = $2
 	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return ErrNoRecord
-	default:
-		return err
-	}
-}
-
-func (m ScrollJarModel) GetScrollContent(scroll *Scroll) error {
-	query := `
-		SELECT content 
-		FROM scroll
-		WHERE jar_id = $1 AND id = $2
-	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.JarID, scroll.ID).Scan(&scroll.Content)
+	err := m.DB.QueryRow(context.Background(), query, scroll.Jar.ID, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord

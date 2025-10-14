@@ -33,17 +33,17 @@ func (d *expiryDuration) UnmarshalJSON(jsonValue []byte) error {
 
 const (
 	accessPublic int = iota
-	accessUnlisted
 	accessPrivate
 )
 
 func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name    string            `json:"name"`
-		Access  int               `json:"access"`
-		Expiry  expiryDuration    `json:"expiry"`
-		Tags    []string          `json:"tags"`
-		Scrolls []database.Scroll `json:"scrolls"`
+		Name     string            `json:"name"`
+		Access   int               `json:"access"`
+		Password string            `json:"password"`
+		Expiry   expiryDuration    `json:"expiry"`
+		Tags     []string          `json:"tags"`
+		Scrolls  []database.Scroll `json:"scrolls"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -54,7 +54,8 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 
 	v := validator.New()
 	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) >= time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
-	v.Check(input.Access <= accessPrivate, "access", "access type can be one of 0, 1 and 2")
+	v.Check(input.Access <= accessPrivate, "access", "access type can be one of 0, 1")
+	v.Check(input.Access == accessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
 	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
 	for i, scroll := range input.Scrolls {
 		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
@@ -64,10 +65,16 @@ func (app *Application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	pwHash, err := hashPassword(input.Password)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 	jar := &database.ScrollJar{
-		Name:   input.Name,
-		Access: input.Access,
-		Tags:   input.Tags,
+		Name:         input.Name,
+		Access:       input.Access,
+		PasswordHash: pwHash,
+		Tags:         input.Tags,
 	}
 	if input.Expiry.Duration != nil {
 		jar.ExpiresAt = pgtype.Timestamptz{

@@ -4,6 +4,7 @@ CREATE TABLE scrolljar (
     id CHAR(8) PRIMARY KEY,
     name TEXT,
     access smallint NOT NULL DEFAULT 0,
+    password_hash text,
     tags TEXT[],
     expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
