@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -38,7 +39,7 @@ type ScrollJar struct {
 }
 
 type ScrollJarModel struct {
-	DB *pgx.Conn
+	DBPool *pgxpool.Pool
 }
 
 func (m ScrollJarModel) Insert(jar *ScrollJar) error {
@@ -56,7 +57,9 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 
 		args := []any{slug, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt}
 
-		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&jar.ID, &jar.CreatedAt, &jar.UpdatedAt)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		err = m.DBPool.QueryRow(ctx, query, args...).Scan(&jar.ID, &jar.CreatedAt, &jar.UpdatedAt)
 		var pgErr *pgconn.PgError
 		switch {
 		case errors.As(err, &pgErr):
@@ -83,7 +86,10 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 		}
 
 		args := []any{slug, scroll.Jar.ID, scroll.Title, scroll.Format, scroll.Content}
-		err = m.DB.QueryRow(context.Background(), query, args...).Scan(&scroll.ID, &scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		err = m.DBPool.QueryRow(ctx, query, args...).Scan(&scroll.ID, &scroll.JarID, &scroll.CreatedAt, &scroll.UpdatedAt)
 		var pgErr *pgconn.PgError
 		switch {
 		case errors.As(err, &pgErr):
@@ -104,7 +110,10 @@ func (m ScrollJarModel) Get(jar *ScrollJar) error {
 		WHERE id = $1
 	`
 
-	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&jar.Name, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&jar.Name, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -120,7 +129,10 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 		WHERE jar_id = $1
 	`
 
-	rows, err := m.DB.Query(context.Background(), query, jar.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DBPool.Query(ctx, query, jar.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -147,7 +159,11 @@ func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 		WHERE jar_id = $1
 	`
 	var count int
-	err := m.DB.QueryRow(context.Background(), query, jar.ID).Scan(&count)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -160,7 +176,10 @@ func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 		FROM scroll
 		WHERE id = $1
 	`
-	err := m.DB.QueryRow(context.Background(), query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -177,8 +196,11 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 		RETURNING updated_at
 	`
 
-	err := m.DB.QueryRow(
-		context.Background(),
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(
+		ctx,
 		query,
 		scroll.Title, scroll.Format, scroll.Content,
 		scroll.ID, scroll.UpdatedAt,
@@ -197,7 +219,10 @@ func (m ScrollJarModel) DeleteScroll(scroll *Scroll) error {
 		WHERE id = $1
 	`
 
-	result, err := m.DB.Exec(context.Background(), query, scroll.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := m.DBPool.Exec(ctx, query, scroll.ID)
 	switch {
 	case result.RowsAffected() == 0:
 		return ErrNoRecord
@@ -212,7 +237,10 @@ func (m ScrollJarModel) Delete(jar *ScrollJar) error {
 		WHERE id = $1
 	`
 
-	result, err := m.DB.Exec(context.Background(), query, jar.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := m.DBPool.Exec(ctx, query, jar.ID)
 	switch {
 	case result.RowsAffected() == 0:
 		return ErrNoRecord

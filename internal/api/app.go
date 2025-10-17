@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
@@ -24,7 +24,7 @@ type Config struct {
 	DB   struct {
 		URL          string
 		MaxOpenConns int
-		MaxIdleConns int
+		MinIdleConns int
 		MaxIdleTime  time.Duration
 	}
 }
@@ -35,11 +35,11 @@ type Application struct {
 	models database.Models
 }
 
-func NewApplication(cfg Config, logger *slog.Logger, db *pgx.Conn) *Application {
+func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Application {
 	return &Application{
 		config: cfg,
 		logger: logger,
-		models: database.NewModels(db),
+		models: database.NewModels(dbPool),
 	}
 }
 

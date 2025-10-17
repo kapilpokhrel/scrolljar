@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/kapilpokhrel/scrolljar/internal/api"
@@ -19,11 +19,26 @@ func parseFlags() api.Config {
 	flag.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|pord))")
 	flag.StringVar(&cfg.DB.URL, "db_url", os.Getenv("SCROLLJAR_DB_URL"), "PostgreSQL URL")
 	flag.IntVar(&cfg.DB.MaxOpenConns, "db_max-open-conns", 50, "PostgreSQL max open connections")
-	flag.IntVar(&cfg.DB.MaxIdleConns, "db_max-idle-conns", 50, "PostgreSQL max idle connections")
+	flag.IntVar(&cfg.DB.MinIdleConns, "db_min-idle-conns", 50, "PostgreSQL min idle connections")
 	flag.DurationVar(&cfg.DB.MaxIdleTime, "db_max-idle-time", time.Minute*10, "PostgreSQL max idle time")
 	flag.Parse()
 
 	return cfg
+}
+
+func setupDB(cfg api.Config) (*pgxpool.Pool, error) {
+	config, err := pgxpool.ParseConfig(cfg.DB.URL)
+	if err != nil {
+		return nil, err
+	}
+	config.MaxConnIdleTime = cfg.DB.MaxIdleTime
+	config.MaxConns = int32(cfg.DB.MaxOpenConns)
+	config.MinIdleConns = int32(cfg.DB.MinIdleConns)
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return nil, err
+	}
+	return pool, nil
 }
 
 func main() {
@@ -35,14 +50,14 @@ func main() {
 	cfg := parseFlags()
 
 	logger.Info(fmt.Sprintf("Connecting to database at %s", cfg.DB.URL))
-	db, err := pgx.Connect(context.Background(), cfg.DB.URL)
+	dbPool, err := setupDB(cfg)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(-1)
 	}
-	defer db.Close(context.Background())
+	defer dbPool.Close()
 
-	app := api.NewApplication(cfg, logger, db)
+	app := api.NewApplication(cfg, logger, dbPool)
 	server := app.NewServer()
 
 	logger.Info("Starting scrolljar API server", "addr", server.Addr, "env", cfg.Env)

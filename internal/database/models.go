@@ -4,7 +4,7 @@ package database
 import (
 	"errors"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -16,8 +16,8 @@ type Models struct {
 	ScrollJar ScrollJarModel
 }
 
-func NewModels(db *pgx.Conn) Models {
+func NewModels(dbPool *pgxpool.Pool) Models {
 	return Models{
-		ScrollJar: ScrollJarModel{db},
+		ScrollJar: ScrollJarModel{dbPool},
 	}
 }
