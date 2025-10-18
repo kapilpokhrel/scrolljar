@@ -58,10 +58,8 @@ func main() {
 	defer dbPool.Close()
 
 	app := api.NewApplication(cfg, logger, dbPool)
-	server := app.NewServer()
-
-	logger.Info("Starting scrolljar API server", "addr", server.Addr, "env", cfg.Env)
-	err = server.ListenAndServe()
-	logger.Error(err.Error())
-	os.Exit(-1)
+	if err = app.Serve(); err != nil {
+		logger.Error(err.Error())
+		os.Exit(-1)
+	}
 }

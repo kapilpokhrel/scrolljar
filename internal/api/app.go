@@ -2,9 +2,14 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,7 +48,7 @@ func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Appl
 	}
 }
 
-func (app *Application) NewServer() *http.Server {
+func (app *Application) Serve() error {
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.Port),
 		Handler:      app.Routes(),
@@ -52,5 +57,31 @@ func (app *Application) NewServer() *http.Server {
 		WriteTimeout: 10 * time.Second,
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
-	return server
+
+	shutDownError := make(chan error)
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+		app.logger.Info("shutting down server", "signal", (<-quit).String())
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+		shutDownError <- server.Shutdown(ctx)
+	}()
+
+	app.logger.Info("Starting scrolljar API server", "addr", server.Addr, "env", app.config.Env)
+	err := server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	err = <-shutDownError
+	if err != nil {
+		return err
+	}
+
+	app.logger.Info("server stopped")
+	return nil
 }
