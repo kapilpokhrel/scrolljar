@@ -94,3 +94,15 @@ func (app *Application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		return err
 	}
 }
+
+func (app *Application) backgroundTask(fn func(), taskname string) {
+	app.wg.Go(func() {
+		defer app.wg.Done()
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.Error(fmt.Sprintf("%s, %v", taskname, err))
+			}
+		}()
+		fn()
+	})
+}

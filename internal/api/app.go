@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
+	"github.com/kapilpokhrel/scrolljar/internal/mailer"
 )
 
 type Environment string
@@ -32,12 +34,21 @@ type Config struct {
 		MinIdleConns int
 		MaxIdleTime  time.Duration
 	}
+	SMTP struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		Sender   string
+	}
 }
 
 type Application struct {
 	config Config
 	logger *slog.Logger
 	models database.Models
+	mailer mailer.Mailer
+	wg     sync.WaitGroup
 }
 
 func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Application {
@@ -45,6 +56,7 @@ func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Appl
 		config: cfg,
 		logger: logger,
 		models: database.NewModels(dbPool),
+		mailer: mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
 	}
 }
 
@@ -68,6 +80,8 @@ func (app *Application) Serve() error {
 		app.logger.Info("shutting down server", "signal", (<-quit).String())
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
+
+		app.wg.Wait()
 		shutDownError <- server.Shutdown(ctx)
 	}()
 

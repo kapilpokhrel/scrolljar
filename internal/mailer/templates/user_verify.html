@@ -1,0 +1,23 @@
+{{define "subject"}}Welcome to Scrolljar!{{end}}
+
+{{define "plainBody"}}
+Hi,
+Thanks for signing up for a scrolljar account.
+
+Your ID: {{.ID}}
+{{end}}
+
+{{define "htmlBody"}}
+<!doctype html>
+<html>
+    <head>  
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    </head>
+    <body>
+        <p>Hi,</p>
+        <p>Thanks for signing up for a scrolljar account.</p>
+        <p>Your ID: {{.ID}}</p>
+    </body>
+</html>
+{{end}}

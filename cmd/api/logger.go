@@ -16,7 +16,7 @@ func setupLogger() *slog.Logger {
 
 	homeDir, _ := os.UserHomeDir()
 	rotFileWriter := &lumberjack.Logger{
-		Filename:   filepath.Join(homeDir, ".local/share/kdfs/logs/kdfs.log"),
+		Filename:   filepath.Join(homeDir, ".local/share/scrolljar/logs/scrolljar.log"),
 		MaxSize:    50, // megabytes
 		MaxBackups: 3,
 		MaxAge:     28, // days

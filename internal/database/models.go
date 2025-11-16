@@ -8,16 +8,19 @@ import (
 )
 
 var (
-	ErrNoRecord     = errors.New("record not found")
-	ErrEditConflict = errors.New("edit confict")
+	ErrNoRecord      = errors.New("record not found")
+	ErrEditConflict  = errors.New("edit confict")
+	ErrDuplicateUser = errors.New("duplicate email")
 )
 
 type Models struct {
 	ScrollJar ScrollJarModel
+	Users     UserModel
 }
 
 func NewModels(dbPool *pgxpool.Pool) Models {
 	return Models{
 		ScrollJar: ScrollJarModel{dbPool},
+		Users:     UserModel{dbPool},
 	}
 }
