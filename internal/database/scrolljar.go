@@ -28,7 +28,7 @@ type Scroll struct {
 
 type ScrollJar struct {
 	ID           string                   `json:"id"`
-	UserID       *int                     `json:"-"`
+	UserID       *int64                   `json:"-"`
 	Name         string                   `json:"name,omitempty"`
 	Access       int                      `json:"access"`
 	PasswordHash string                   `json:"-"`

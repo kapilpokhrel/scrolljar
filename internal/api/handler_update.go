@@ -8,6 +8,12 @@ import (
 )
 
 func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	if user == nil {
+		app.invalidCredentialsResponse(w, r)
+		return
+	}
+
 	var input struct {
 		Title   *string `json:"title"`
 		Content *string `json:"content"`
@@ -33,6 +39,11 @@ func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Reques
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+
+	if !app.verifyJarCreator(scroll.JarID, w, r) {
+		app.invalidAuthenticationTokenResponse(w, r)
 		return
 	}
 

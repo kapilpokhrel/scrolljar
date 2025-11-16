@@ -70,12 +70,19 @@ func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *htt
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+
 	jar := &database.ScrollJar{
 		Name:         input.Name,
 		Access:       input.Access,
 		PasswordHash: pwHash,
 		Tags:         input.Tags,
 	}
+	user := app.contextGetUser(r)
+	if user != nil {
+		userID := user.ID
+		jar.UserID = &userID
+	}
+
 	if input.Expiry.Duration != nil {
 		jar.ExpiresAt = pgtype.Timestamptz{
 			Time: time.Now().Add(*input.Expiry.Duration),

@@ -44,19 +44,21 @@ type Config struct {
 }
 
 type Application struct {
-	config Config
-	logger *slog.Logger
-	models database.Models
-	mailer mailer.Mailer
-	wg     sync.WaitGroup
+	config    Config
+	logger    *slog.Logger
+	models    database.Models
+	mailer    mailer.Mailer
+	wg        sync.WaitGroup
+	startTime time.Time
 }
 
 func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Application {
 	return &Application{
-		config: cfg,
-		logger: logger,
-		models: database.NewModels(dbPool),
-		mailer: mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
+		config:    cfg,
+		logger:    logger,
+		models:    database.NewModels(dbPool),
+		mailer:    mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
+		startTime: time.Now(),
 	}
 }
 

@@ -123,3 +123,28 @@ func generateToken(uid int64, scope string, expiryDuration time.Duration) (strin
 	}
 	return tokenText, &token
 }
+
+func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r *http.Request) bool {
+	user := app.contextGetUser(r)
+	if user == nil {
+		return false
+	}
+	jar := database.ScrollJar{
+		ID: jarID,
+	}
+
+	err := app.models.ScrollJar.Get(&jar)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrNoRecord):
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return false
+	}
+
+	if *jar.UserID != user.ID {
+		return false
+	}
+	return true
+}

@@ -12,14 +12,15 @@ func (app *Application) deleteScrollJarHandler(w http.ResponseWriter, r *http.Re
 	jar := database.ScrollJar{
 		ID: id,
 	}
+
+	if !app.verifyJarCreator(id, w, r) {
+		app.invalidAuthenticationTokenResponse(w, r)
+		return
+	}
+
 	err := app.models.ScrollJar.Delete(&jar)
 	if err != nil {
-		switch {
-		case errors.Is(err, database.ErrNoRecord):
-			app.notFoundResponse(w, r)
-		default:
-			app.serverErrorResponse(w, r, err)
-		}
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -36,7 +37,7 @@ func (app *Application) deleteScrollHandler(w http.ResponseWriter, r *http.Reque
 		ID: id,
 	}
 
-	err := app.models.ScrollJar.DeleteScroll(&scroll)
+	err := app.models.ScrollJar.GetScroll(&scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -44,6 +45,17 @@ func (app *Application) deleteScrollHandler(w http.ResponseWriter, r *http.Reque
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+
+	if !app.verifyJarCreator(id, w, r) {
+		app.invalidAuthenticationTokenResponse(w, r)
+		return
+	}
+
+	err = app.models.ScrollJar.DeleteScroll(&scroll)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
