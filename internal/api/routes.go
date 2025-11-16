@@ -20,6 +20,7 @@ func (app *Application) Routes() http.Handler {
 	router.HandlerFunc(http.MethodDelete, "/v1/jar/:id", app.deleteScrollJarHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/scroll/:id", app.deleteScrollHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/user/register", app.postUserRegisterHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/user/activate", app.putUserActivationHandler)
 
 	return app.recoverPanic(router)
 }

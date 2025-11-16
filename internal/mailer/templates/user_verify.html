@@ -5,6 +5,11 @@ Hi,
 Thanks for signing up for a scrolljar account.
 
 Your ID: {{.ID}}
+
+Please send a requst to `PUT /v1/user/activate` endpoint with the following JSON as request Body to activate your account.
+{"token": "{{.Token}}"}
+
+Thank You
 {{end}}
 
 {{define "htmlBody"}}
@@ -18,6 +23,12 @@ Your ID: {{.ID}}
         <p>Hi,</p>
         <p>Thanks for signing up for a scrolljar account.</p>
         <p>Your ID: {{.ID}}</p>
+        <p>Please send a requst to <code>PUT /v1/user/activate</code> with the following JSON Body to activate your account.
+        <pre><code>
+        {"token" : "{{.Token}}"}
+        </code></pre>
+
+        <p>Thank you</p>
     </body>
 </html>
 {{end}}

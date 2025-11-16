@@ -34,9 +34,9 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		"must be a valid email address",
 	)
 	v.Check(
-		len(input.Password) >= 8 && len(input.Password) <= 128,
+		len(input.Password) >= 8 && len(input.Password) <= 72,
 		"password",
-		"password must be atleast 8 characters long atmost 128 characters long",
+		"password must be atleast 8 characters long atmost 72 characters long",
 	)
 
 	if !v.Valid() {
@@ -44,7 +44,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	pwHash, err := hashString(input.Password)
+	pwHash, err := hashPassword(input.Password)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -55,7 +55,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		PasswordHash: pwHash,
 	}
 
-	err = app.models.User.Insert(user)
+	err = app.models.Users.Insert(user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUser):

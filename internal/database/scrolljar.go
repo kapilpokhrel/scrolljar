@@ -55,7 +55,7 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 			return err
 		}
 
-		args := []any{slug, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt}
+		args := []any{slug, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt.Time}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -104,6 +104,7 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 }
 
 func (m ScrollJarModel) Get(jar *ScrollJar) error {
+	// TODO: Need to check expiry
 	query := `
 		SELECT name, access, password_hash, tags, expires_at, created_at, updated_at
 		FROM scrolljar
@@ -203,7 +204,7 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 		ctx,
 		query,
 		scroll.Title, scroll.Format, scroll.Content,
-		scroll.ID, scroll.UpdatedAt,
+		scroll.ID, scroll.UpdatedAt.Time,
 	).Scan(&scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):

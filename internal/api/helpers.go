@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,12 +23,12 @@ const (
 	BaseURI string = "https://scrolljar.com"
 )
 
-func hashString(password string) (string, error) {
+func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(bytes), err
 }
 
-func verifyHashString(password, hash string) bool {
+func verifyHashPassword(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
@@ -100,7 +101,6 @@ func (app *Application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 
 func (app *Application) backgroundTask(fn func(), taskname string) {
 	app.wg.Go(func() {
-		defer app.wg.Done()
 		defer func() {
 			if err := recover(); err != nil {
 				app.logger.Error(fmt.Sprintf("%s, %v", taskname, err))
@@ -112,12 +112,9 @@ func (app *Application) backgroundTask(fn func(), taskname string) {
 
 func generateToken(uid int64, scope string, expiryDuration time.Duration) (string, *database.Token, error) {
 	tokenText := rand.Text()
-	tokenHash, err := hashString(tokenText)
-	if err != nil {
-		return "", nil, err
-	}
+	tokenHash := sha256.Sum256([]byte(tokenText))
 	token := database.Token{
-		TokenHash: tokenHash,
+		TokenHash: tokenHash[:],
 		UserID:    uid,
 		Scope:     scope,
 		ExpiresAt: pgtype.Timestamptz{

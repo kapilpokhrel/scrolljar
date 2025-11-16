@@ -27,7 +27,7 @@ type UserModel struct {
 
 func (m UserModel) Insert(user *User) error {
 	query := `
-		INSERT INTO user (username, email, password_hash)
+		INSERT INTO users (username, email, password_hash)
 		VALUES ($1, $2, $3)
 		RETURNING id, created_at, updated_at 
 	`
@@ -40,7 +40,7 @@ func (m UserModel) Insert(user *User) error {
 	var pgErr *pgconn.PgError
 	switch {
 	case errors.As(err, &pgErr):
-		if pgErr.Code == "23505" && pgErr.ConstraintName == "user_email_key" {
+		if pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
 			return ErrDuplicateUser
 		}
 		return pgErr
@@ -49,10 +49,36 @@ func (m UserModel) Insert(user *User) error {
 	}
 }
 
-func (m ScrollJarModel) GetUserByEmail(user *User) error {
+func (m UserModel) GetByID(user *User) error {
+	query := `
+		SELECT email, username, password_hash, activated, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(ctx, query, user.ID).Scan(
+		&user.Email,
+		&user.Username,
+		&user.PasswordHash,
+		&user.Activated,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return ErrNoRecord
+	default:
+		return err
+	}
+}
+
+func (m UserModel) GetUserByEmail(user *User) error {
 	query := `
 		SELECT id, username, password_hash, activated, created_at, updated_at
-		FROM user 
+		FROM users
 		WHERE email = $1
 	`
 
@@ -76,9 +102,9 @@ func (m ScrollJarModel) GetUserByEmail(user *User) error {
 
 func (m UserModel) Update(user *User) error {
 	query := `
-		UPDATE user 
-		SET username = $1, email = $2, password_hash = $3
-		WHERE id = $4 AND updated_at = $5
+		UPDATE users 
+		SET username = $1, email = $2, activated = $3, password_hash = $4
+		WHERE id = $5 AND updated_at = $6
 		RETURNING updated_at
 	`
 
@@ -88,8 +114,8 @@ func (m UserModel) Update(user *User) error {
 	err := m.DBPool.QueryRow(
 		ctx,
 		query,
-		user.Username, user.Email, user.PasswordHash,
-		user.ID, user.UpdatedAt,
+		user.Username, user.Email, user.Activated, user.PasswordHash,
+		user.ID, user.UpdatedAt.Time,
 	).Scan(&user.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -101,7 +127,7 @@ func (m UserModel) Update(user *User) error {
 
 func (m UserModel) Delete(user *User) error {
 	query := `
-		DELETE FROM user 
+		DELETE FROM users
 		WHERE id = $1
 	`
 

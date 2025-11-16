@@ -35,7 +35,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER delete_expired_scrolljar_trigger
-AFTER INSERT OR UPDATE OR DELETE ON  scroll
+BEFORE INSERT OR UPDATE ON scroll
 FOR EACH STATEMENT
 EXECUTE FUNCTION delete_expired_scrolljar();
 -- +goose StatementEnd

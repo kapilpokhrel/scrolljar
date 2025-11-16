@@ -15,14 +15,14 @@ var (
 
 type Models struct {
 	ScrollJar ScrollJarModel
-	User      UserModel
+	Users     UserModel
 	Token     TokenModel
 }
 
 func NewModels(dbPool *pgxpool.Pool) Models {
 	return Models{
 		ScrollJar: ScrollJarModel{dbPool},
-		User:      UserModel{dbPool},
+		Users:     UserModel{dbPool},
 		Token:     TokenModel{dbPool},
 	}
 }

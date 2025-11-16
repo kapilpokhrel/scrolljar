@@ -6,13 +6,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Token struct {
-	TokenHash string             `json:"-"`
+	TokenHash []byte             `json:"-"`
 	UserID    int64              `json:"-"`
 	Scope     string             `json:"-"`
 	ExpiresAt pgtype.Timestamptz `json:"-"`
@@ -27,28 +26,24 @@ type TokenModel struct {
 }
 
 func (m TokenModel) Insert(token *Token) error {
+	// DO UPDATE will be useful later when there will be a endpoint for token regeneration
+
 	query := `
-		INSERT INTO token (token_hash, user_id, scope, expires_at)
+		INSERT INTO token (token_hash, user_id, expires_at, scope)
 		VALUES ($1, $2, $3, $4)
+		ON CONFLICT ON CONSTRAINT unique_user_scope_token
+		DO UPDATE SET
+			token_hash = $1,
+			expires_at = $3
 	`
 
-	args := []any{token.TokenHash, token.UserID, token.Scope, token.ExpiresAt}
+	args := []any{token.TokenHash, token.UserID, token.ExpiresAt.Time, token.Scope}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err := m.DBPool.Exec(ctx, query, args...)
-
-	var pgErr *pgconn.PgError
-	switch {
-	case errors.As(err, &pgErr):
-		if pgErr.Code == "23505" && pgErr.ConstraintName == "token_pkey" {
-			return ErrDuplicateUser
-		}
-		return pgErr
-	default:
-		return err
-	}
+	return err
 }
 
 func (m TokenModel) GetTokenByHash(token *Token) error {
@@ -74,7 +69,7 @@ func (m TokenModel) GetTokenByHash(token *Token) error {
 	}
 }
 
-func (m TokenModel) Delete(token *Token) error {
+func (m TokenModel) DeleteByHash(token *Token) error {
 	query := `
 		DELETE FROM token 
 		WHERE token_hash = $1
@@ -84,6 +79,24 @@ func (m TokenModel) Delete(token *Token) error {
 	defer cancel()
 
 	result, err := m.DBPool.Exec(ctx, query, token.TokenHash)
+	switch {
+	case result.RowsAffected() == 0:
+		return ErrNoRecord
+	default:
+		return err
+	}
+}
+
+func (m TokenModel) DeleteAllByUser(token *Token) error {
+	query := `
+		DELETE FROM token 
+		WHERE user_id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := m.DBPool.Exec(ctx, query, token.UserID)
 	switch {
 	case result.RowsAffected() == 0:
 		return ErrNoRecord

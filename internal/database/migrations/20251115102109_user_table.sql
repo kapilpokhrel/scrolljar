@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE EXTENSION IF NOT EXISTS citext;
 
-CREATE TABLE IF NOT EXISTS user (
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username TEXT NOT NULL,
     email citext UNIQUE NOT NULL,
@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS user (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS users;
 -- +goose StatementEnd
