@@ -23,6 +23,20 @@ func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
+
+	if jar.Access == database.AccessPrivate {
+		passwordHeader := r.Header.Get("X-Paste-Password")
+		if passwordHeader == "" {
+			app.invalidCredentialsResponse(w, r)
+			return
+		}
+
+		if !verifyHashPassword(passwordHeader, *jar.PasswordHash) {
+			app.invalidCredentialsResponse(w, r)
+			return
+		}
+	}
+
 	app.getJarURI(&jar)
 
 	scrolls, err := app.models.ScrollJar.GetAllScrolls(&jar)
@@ -59,6 +73,34 @@ func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
+
+	jar := database.ScrollJar{
+		ID: scroll.JarID,
+	}
+
+	err = app.models.ScrollJar.Get(&jar)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrNoRecord):
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if jar.Access == database.AccessPrivate {
+		passwordHeader := r.Header.Get("X-Paste-Password")
+		if passwordHeader == "" {
+			app.invalidCredentialsResponse(w, r)
+			return
+		}
+
+		if !verifyHashPassword(passwordHeader, *jar.PasswordHash) {
+			app.invalidCredentialsResponse(w, r)
+			return
+		}
+	}
+
 	app.getScrollURI(&scroll)
 
 	env := envelope{"scroll": scroll}

@@ -3,7 +3,7 @@
 CREATE TABLE scrolljar (
     id CHAR(8) PRIMARY KEY,
     name TEXT,
-    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    user_id BIGINT,
     access smallint NOT NULL DEFAULT 0,
     password_hash text,
     tags TEXT[],

@@ -31,7 +31,7 @@ type ScrollJar struct {
 	UserID       *int64                   `json:"-"`
 	Name         string                   `json:"name,omitempty"`
 	Access       int                      `json:"access"`
-	PasswordHash string                   `json:"-"`
+	PasswordHash *string                  `json:"-"`
 	Tags         pgtype.FlatArray[string] `json:"tags"`
 	ExpiresAt    pgtype.Timestamptz       `json:"expires_at"`
 	CreatedAt    pgtype.Timestamptz       `json:"created_at"`
@@ -43,10 +43,15 @@ type ScrollJarModel struct {
 	DBPool *pgxpool.Pool
 }
 
+const (
+	AccessPublic int = iota
+	AccessPrivate
+)
+
 func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 	query := `
 		INSERT INTO scrolljar (id, user_id, name, access, password_hash, tags, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at 
 	`
 

@@ -31,11 +31,6 @@ func (d *expiryDuration) UnmarshalJSON(jsonValue []byte) error {
 	return nil
 }
 
-const (
-	accessPublic int = iota
-	accessPrivate
-)
-
 func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string            `json:"name"`
@@ -54,8 +49,8 @@ func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *htt
 
 	v := validator.New()
 	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) >= time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
-	v.Check(input.Access <= accessPrivate, "access", "access type can be one of 0, 1")
-	v.Check(input.Access == accessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
+	v.Check(input.Access <= database.AccessPrivate, "access", "access type can be one of 0, 1")
+	v.Check(input.Access == database.AccessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
 	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
 	for i, scroll := range input.Scrolls {
 		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
@@ -65,17 +60,18 @@ func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	pwHash, err := hashPassword(input.Password)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-
 	jar := &database.ScrollJar{
-		Name:         input.Name,
-		Access:       input.Access,
-		PasswordHash: pwHash,
-		Tags:         input.Tags,
+		Name:   input.Name,
+		Access: input.Access,
+		Tags:   input.Tags,
+	}
+	if input.Password != "" {
+		pwHash, err := hashPassword(input.Password)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+		jar.PasswordHash = &pwHash
 	}
 	user := app.contextGetUser(r)
 	if user != nil {
