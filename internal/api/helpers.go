@@ -110,7 +110,7 @@ func (app *Application) backgroundTask(fn func(), taskname string) {
 	})
 }
 
-func generateToken(uid int64, scope string, expiryDuration time.Duration) (string, *database.Token, error) {
+func generateToken(uid int64, scope string, expiryDuration time.Duration) (string, *database.Token) {
 	tokenText := rand.Text()
 	tokenHash := sha256.Sum256([]byte(tokenText))
 	token := database.Token{
@@ -121,5 +121,5 @@ func generateToken(uid int64, scope string, expiryDuration time.Duration) (strin
 			Time: time.Now().Add(expiryDuration),
 		},
 	}
-	return tokenText, &token, nil
+	return tokenText, &token
 }

@@ -67,11 +67,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tokenText, token, err := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
-	if err != nil {
-		// TODO
-		return
-	}
+	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
 	err = app.models.Token.Insert(token)
 	if err != nil {

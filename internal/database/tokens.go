@@ -18,7 +18,9 @@ type Token struct {
 }
 
 const (
-	ScopeActivation = "activation"
+	ScopeActivation    = "activation"
+	ScopeAuthorization = "access"
+	ScopeRefresh       = "refresh"
 )
 
 type TokenModel struct {

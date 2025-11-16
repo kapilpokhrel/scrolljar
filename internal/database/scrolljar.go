@@ -28,6 +28,7 @@ type Scroll struct {
 
 type ScrollJar struct {
 	ID           string                   `json:"id"`
+	UserID       *int                     `json:"-"`
 	Name         string                   `json:"name,omitempty"`
 	Access       int                      `json:"access"`
 	PasswordHash string                   `json:"-"`
@@ -44,7 +45,7 @@ type ScrollJarModel struct {
 
 func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 	query := `
-		INSERT INTO scrolljar (id, name, access, password_hash, tags, expires_at)
+		INSERT INTO scrolljar (id, user_id, name, access, password_hash, tags, expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at, updated_at 
 	`
@@ -55,7 +56,7 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 			return err
 		}
 
-		args := []any{slug, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt.Time}
+		args := []any{slug, jar.UserID, jar.Name, jar.Access, jar.PasswordHash, jar.Tags, jar.ExpiresAt.Time}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -106,7 +107,7 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	// TODO: Need to check expiry
 	query := `
-		SELECT name, access, password_hash, tags, expires_at, created_at, updated_at
+		SELECT name, user_id, access, password_hash, tags, expires_at, created_at, updated_at
 		FROM scrolljar
 		WHERE id = $1
 	`
@@ -114,7 +115,7 @@ func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&jar.Name, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
+	err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&jar.Name, &jar.UserID, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord

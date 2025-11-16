@@ -41,3 +41,8 @@ func (app *Application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	msg := "resources not found"
 	app.errorResponse(w, r, http.StatusNotFound, msg)
 }
+
+func (app *Application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid authentication credentials"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}

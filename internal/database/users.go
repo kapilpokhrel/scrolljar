@@ -86,6 +86,7 @@ func (m UserModel) GetUserByEmail(user *User) error {
 	defer cancel()
 
 	err := m.DBPool.QueryRow(ctx, query, user.Email).Scan(
+		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
 		&user.Activated,
