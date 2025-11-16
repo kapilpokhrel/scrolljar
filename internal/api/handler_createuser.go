@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
@@ -43,7 +44,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	pwHash, err := hashPassword(input.Password)
+	pwHash, err := hashString(input.Password)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -54,7 +55,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		PasswordHash: pwHash,
 	}
 
-	err = app.models.Users.Insert(user)
+	err = app.models.User.Insert(user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUser):
@@ -66,9 +67,30 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	tokenText, token, err := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
+	if err != nil {
+		// TODO
+		return
+	}
+
+	err = app.models.Token.Insert(token)
+	if err != nil {
+		// TODO
+		return
+	}
+
+	userData := struct {
+		ID    int64
+		Token string
+		Email string
+	}{
+		ID:    user.ID,
+		Token: tokenText,
+		Email: user.Email,
+	}
 	app.backgroundTask(func() {
 		for i := 1; i <= 3; i++ {
-			err = app.mailer.Send(user.Email, "user_verify.html", user)
+			err = app.mailer.Send(user.Email, "user_verify.html", userData)
 			if err == nil {
 				app.logError(r, err)
 			}

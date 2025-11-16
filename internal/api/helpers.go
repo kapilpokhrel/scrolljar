@@ -1,13 +1,16 @@
 package api
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"net/http"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/julienschmidt/httprouter"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"golang.org/x/crypto/bcrypt"
@@ -19,12 +22,12 @@ const (
 	BaseURI string = "https://scrolljar.com"
 )
 
-func hashPassword(password string) (string, error) {
+func hashString(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(bytes), err
 }
 
-func verifyPassword(password, hash string) bool {
+func verifyHashString(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
@@ -105,4 +108,21 @@ func (app *Application) backgroundTask(fn func(), taskname string) {
 		}()
 		fn()
 	})
+}
+
+func generateToken(uid int64, scope string, expiryDuration time.Duration) (string, *database.Token, error) {
+	tokenText := rand.Text()
+	tokenHash, err := hashString(tokenText)
+	if err != nil {
+		return "", nil, err
+	}
+	token := database.Token{
+		TokenHash: tokenHash,
+		UserID:    uid,
+		Scope:     scope,
+		ExpiresAt: pgtype.Timestamptz{
+			Time: time.Now().Add(expiryDuration),
+		},
+	}
+	return tokenText, &token, nil
 }

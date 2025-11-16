@@ -65,7 +65,7 @@ func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	pwHash, err := hashPassword(input.Password)
+	pwHash, err := hashString(input.Password)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

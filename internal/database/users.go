@@ -27,7 +27,7 @@ type UserModel struct {
 
 func (m UserModel) Insert(user *User) error {
 	query := `
-		INSERT INTO users (username, email, password_hash)
+		INSERT INTO user (username, email, password_hash)
 		VALUES ($1, $2, $3)
 		RETURNING id, created_at, updated_at 
 	`
@@ -40,7 +40,7 @@ func (m UserModel) Insert(user *User) error {
 	var pgErr *pgconn.PgError
 	switch {
 	case errors.As(err, &pgErr):
-		if pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
+		if pgErr.Code == "23505" && pgErr.ConstraintName == "user_email_key" {
 			return ErrDuplicateUser
 		}
 		return pgErr
@@ -52,7 +52,7 @@ func (m UserModel) Insert(user *User) error {
 func (m ScrollJarModel) GetUserByEmail(user *User) error {
 	query := `
 		SELECT id, username, password_hash, activated, created_at, updated_at
-		FROM users 
+		FROM user 
 		WHERE email = $1
 	`
 
@@ -76,7 +76,7 @@ func (m ScrollJarModel) GetUserByEmail(user *User) error {
 
 func (m UserModel) Update(user *User) error {
 	query := `
-		UPDATE scroll
+		UPDATE user 
 		SET username = $1, email = $2, password_hash = $3
 		WHERE id = $4 AND updated_at = $5
 		RETURNING updated_at
@@ -101,7 +101,7 @@ func (m UserModel) Update(user *User) error {
 
 func (m UserModel) Delete(user *User) error {
 	query := `
-		DELETE FROM users 
+		DELETE FROM user 
 		WHERE id = $1
 	`
 
