@@ -126,9 +126,6 @@ func generateToken(uid int64, scope string, expiryDuration time.Duration) (strin
 
 func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r *http.Request) bool {
 	user := app.contextGetUser(r)
-	if user == nil {
-		return false
-	}
 	jar := database.ScrollJar{
 		ID: jarID,
 	}

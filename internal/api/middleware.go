@@ -66,3 +66,14 @@ func (app *Application) authenticateUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, app.contextSetUser(r, user))
 	})
 }
+
+func (app *Application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+		if user == nil {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}

@@ -43,7 +43,7 @@ func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if !app.verifyJarCreator(scroll.JarID, w, r) {
-		app.authenticationRequiredResponse(w, r)
+		app.invalidCredentialsResponse(w, r)
 		return
 	}
 
