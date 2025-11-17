@@ -14,7 +14,7 @@ func (app *Application) deleteScrollJarHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	if !app.verifyJarCreator(id, w, r) {
-		app.invalidAuthenticationTokenResponse(w, r)
+		app.authenticationRequiredResponse(w, r)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (app *Application) deleteScrollHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	if !app.verifyJarCreator(id, w, r) {
-		app.invalidAuthenticationTokenResponse(w, r)
+		app.authenticationRequiredResponse(w, r)
 		return
 	}
 

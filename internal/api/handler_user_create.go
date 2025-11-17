@@ -87,7 +87,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 	app.backgroundTask(func() {
 		for i := 1; i <= 3; i++ {
 			err = app.mailer.Send(user.Email, "user_verify.html", userData)
-			if err == nil {
+			if err != nil {
 				app.logError(r, err)
 			}
 		}

@@ -34,6 +34,7 @@ func (app *Application) Routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/user/register", app.postUserRegisterHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/user/activate", app.putUserActivationHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/user/auth", app.postUserAuthHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/token/activation", app.postUserActivationTokenHandler)
 
 	return app.recoverPanic(app.authenticateUser(router))
 }

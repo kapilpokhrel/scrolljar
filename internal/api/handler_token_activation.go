@@ -9,7 +9,7 @@ import (
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
-func (app *Application) postUserAuthHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) postUserActivationTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -57,28 +57,18 @@ func (app *Application) postUserAuthHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !user.Activated {
-		app.inactiveAccountResponse(w, r)
+	if user.Activated {
+		app.errorResponse(w, r, http.StatusServiceUnavailable, "account already activated")
 		return
 	}
 
-	authTokenText, authToken := generateToken(user.ID, database.ScopeAuthorization, time.Hour*24)
-	refreshTokenText, refreshToken := generateToken(user.ID, database.ScopeRefresh, time.Hour*24*30) // 30 days
+	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
-	err = app.models.Token.Insert(authToken)
-	if err != nil {
-		// TODO
-		return
-	}
-	err = app.models.Token.Insert(refreshToken)
+	err = app.models.Token.Insert(token)
 	if err != nil {
 		// TODO
 		return
 	}
 
-	output := envelope{
-		"authorization": envelope{"token": authTokenText, "expiry": authToken.ExpiresAt.Time.UTC()},
-		"refersh":       envelope{"token": refreshTokenText, "expiry": refreshToken.ExpiresAt.Time.UTC()},
-	}
-	app.writeJSON(w, http.StatusOK, output, nil)
+	app.writeJSON(w, http.StatusOK, envelope{"token": tokenText, "expiry": token.ExpiresAt.Time.UTC()}, nil)
 }
