@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -56,17 +55,12 @@ func main() {
 	if err != nil {
 		logger.Error("Error loading .env file")
 	}
-	cfg := parseFlags()
 
-	logger.Info(fmt.Sprintf("Connecting to database at %s", cfg.DB.URL))
-	dbPool, err := setupDB(cfg)
+	app, err := api.NewApplication(logger)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(-1)
 	}
-	defer dbPool.Close()
-
-	app := api.NewApplication(cfg, logger, dbPool)
 	if err = app.Serve(); err != nil {
 		logger.Error(err.Error())
 		os.Exit(-1)

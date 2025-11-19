@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/justinas/alice"
 )
 
 func (app *Application) ping(w http.ResponseWriter, r *http.Request) {
@@ -21,20 +22,26 @@ func (app *Application) Routes() http.Handler {
 	// httprouter is fast alternative for http.ServerMux
 	router := httprouter.New()
 
+	commonChain := alice.New(app.recoverPanic, app.globalRateLimiter)
+	generalIPLimitChain := alice.New(app.ipRateLimiter("general"), app.authenticateUser)
+	mediumIPLimitChain := alice.New(app.ipRateLimiter("medium"), app.authenticateUser)
+	strictIPLimitChain := alice.New(app.ipRateLimiter("strict"), app.authenticateUser)
+	updateDeleteChain := mediumIPLimitChain.Append(app.requireAuthenticatedUser)
+
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
-	router.HandlerFunc(http.MethodGet, "/v1/ping", app.ping)
-	router.HandlerFunc(http.MethodPost, "/v1/jar", app.postCreateScrollJarHandler)
-	router.HandlerFunc(http.MethodPost, "/v1/scroll/:id", app.postCreateScrollHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/jar/:id", app.getScrollJarHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/scroll/:id", app.getScrollHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/scroll/:id", app.requireAuthenticatedUser(app.patchScrollHandler))
-	router.HandlerFunc(http.MethodDelete, "/v1/jar/:id", app.requireAuthenticatedUser(app.deleteScrollJarHandler))
-	router.HandlerFunc(http.MethodDelete, "/v1/scroll/:id", app.requireAuthenticatedUser(app.deleteScrollHandler))
-	router.HandlerFunc(http.MethodPost, "/v1/user/register", app.postUserRegisterHandler)
-	router.HandlerFunc(http.MethodPut, "/v1/user/activate", app.putUserActivationHandler)
-	router.HandlerFunc(http.MethodPost, "/v1/user/auth", app.postUserAuthHandler)
-	router.HandlerFunc(http.MethodPost, "/v1/token/activation", app.postUserActivationTokenHandler)
+	router.Handler(http.MethodGet, "/v1/ping", generalIPLimitChain.Then(http.HandlerFunc(app.ping)))
+	router.Handler(http.MethodPost, "/v1/jar", mediumIPLimitChain.Then(http.HandlerFunc(app.postCreateScrollJarHandler)))
+	router.Handler(http.MethodPost, "/v1/scroll/:id", mediumIPLimitChain.Then(http.HandlerFunc(app.postCreateScrollHandler)))
+	router.Handler(http.MethodGet, "/v1/jar/:id", generalIPLimitChain.Then(http.HandlerFunc(app.getScrollJarHandler)))
+	router.Handler(http.MethodGet, "/v1/scroll/:id", generalIPLimitChain.Then(http.HandlerFunc(app.getScrollHandler)))
+	router.Handler(http.MethodPatch, "/v1/scroll/:id", updateDeleteChain.Then(http.HandlerFunc(app.patchScrollHandler)))
+	router.Handler(http.MethodDelete, "/v1/jar/:id", updateDeleteChain.Then(http.HandlerFunc(app.deleteScrollJarHandler)))
+	router.Handler(http.MethodDelete, "/v1/scroll/:id", updateDeleteChain.Then(http.HandlerFunc(app.deleteScrollHandler)))
+	router.Handler(http.MethodPost, "/v1/user/register", strictIPLimitChain.Then(http.HandlerFunc(app.postUserRegisterHandler)))
+	router.Handler(http.MethodPut, "/v1/user/activate", strictIPLimitChain.Then(http.HandlerFunc(app.putUserActivationHandler)))
+	router.Handler(http.MethodPost, "/v1/user/auth", mediumIPLimitChain.Then(http.HandlerFunc(app.postUserAuthHandler)))
+	router.Handler(http.MethodPost, "/v1/token/activation", strictIPLimitChain.Then(http.HandlerFunc(app.postUserActivationTokenHandler)))
 
-	return app.recoverPanic(app.authenticateUser(router))
+	return commonChain.Then(router)
 }

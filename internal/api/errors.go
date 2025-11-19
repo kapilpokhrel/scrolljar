@@ -63,3 +63,13 @@ func (app *Application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 	message := "invalid or missing authentication token"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
+
+func (app *Application) globalMaxRateResponse(w http.ResponseWriter, r *http.Request) {
+	message := "Server is on high load. Please try again later"
+	app.errorResponse(w, r, http.StatusTooManyRequests, message)
+}
+
+func (app *Application) ipMaxRateResponse(w http.ResponseWriter, r *http.Request) {
+	message := "Too many requests from your ip"
+	app.errorResponse(w, r, http.StatusTooManyRequests, message)
+}

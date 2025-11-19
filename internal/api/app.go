@@ -4,11 +4,13 @@ package api
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -41,10 +43,18 @@ type Config struct {
 		Password string
 		Sender   string
 	}
+
+	Rate struct {
+		GlobalRps float64
+		GlobalBps int
+		IPRps     float64
+		IPBps     int
+	}
 }
 
 type Application struct {
 	config    Config
+	dbPool    *pgxpool.Pool
 	logger    *slog.Logger
 	models    database.Models
 	mailer    mailer.Mailer
@@ -52,14 +62,62 @@ type Application struct {
 	startTime time.Time
 }
 
-func NewApplication(cfg Config, logger *slog.Logger, dbPool *pgxpool.Pool) *Application {
+func parseFlags() Config {
+	var cfg Config
+	flag.IntVar(&cfg.Port, "port", 8008, "API server port")
+	flag.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|pord))")
+	flag.StringVar(&cfg.DB.URL, "db_url", os.Getenv("SCROLLJAR_DB_URL"), "PostgreSQL URL")
+	flag.IntVar(&cfg.DB.MaxOpenConns, "db_max-open-conns", 50, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.DB.MinIdleConns, "db_min-idle-conns", 50, "PostgreSQL min idle connections")
+	flag.DurationVar(&cfg.DB.MaxIdleTime, "db_max-idle-time", time.Minute*10, "PostgreSQL max idle time")
+
+	flag.StringVar(&cfg.SMTP.Host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
+
+	smtpPort, _ := strconv.ParseInt(os.Getenv("SMTP_PORT"), 10, 64)
+	flag.IntVar(&cfg.SMTP.Port, "smtp-port", int(smtpPort), "SMTP port")
+	flag.StringVar(&cfg.SMTP.Username, "smt-username", os.Getenv("SMTP_USERNAME"), "SMPT Username")
+	flag.StringVar(&cfg.SMTP.Password, "smt-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
+	flag.StringVar(&cfg.SMTP.Sender, "smtp-sender", os.Getenv("SMTP_SENDER"), "SMTP sender")
+
+	flag.Float64Var(&cfg.Rate.GlobalRps, "global-rate-limit", 200.0, "Global rate limit (per second)")
+	flag.IntVar(&cfg.Rate.GlobalBps, "global-burst", 250, "Global limit burst (per second)")
+	flag.Float64Var(&cfg.Rate.IPRps, "ip-rate-limit", 10.0, "IP rate limit (per second)")
+	flag.IntVar(&cfg.Rate.IPBps, "ip-burst", 15, "IP limit burst (per second)")
+	flag.Parse()
+
+	return cfg
+}
+
+func setupDB(cfg Config) (*pgxpool.Pool, error) {
+	config, err := pgxpool.ParseConfig(cfg.DB.URL)
+	if err != nil {
+		return nil, err
+	}
+	config.MaxConnIdleTime = cfg.DB.MaxIdleTime
+	config.MaxConns = int32(cfg.DB.MaxOpenConns)
+	config.MinIdleConns = int32(cfg.DB.MinIdleConns)
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return nil, err
+	}
+	return pool, nil
+}
+
+func NewApplication(logger *slog.Logger) (*Application, error) {
+	cfg := parseFlags()
+	logger.Info(fmt.Sprintf("Connecting to database at %s", cfg.DB.URL))
+	dbPool, err := setupDB(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &Application{
 		config:    cfg,
+		dbPool:    dbPool,
 		logger:    logger,
 		models:    database.NewModels(dbPool),
 		mailer:    mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
 		startTime: time.Now(),
-	}
+	}, nil
 }
 
 func (app *Application) Serve() error {
@@ -99,5 +157,6 @@ func (app *Application) Serve() error {
 	}
 
 	app.logger.Info("server stopped")
+	app.dbPool.Close()
 	return nil
 }
