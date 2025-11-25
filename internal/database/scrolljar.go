@@ -129,6 +129,35 @@ func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	}
 }
 
+func (m ScrollJarModel) GetAllByUserID(userID int64) ([]*ScrollJar, error) {
+	query := `
+		SELECT id, name, access, password_hash, tags, expires_at, created_at, updated_at
+		FROM scrolljar
+		WHERE user_id = $1
+	`
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DBPool.Query(ctx, query, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNoRecord
+		default:
+			return nil, err
+		}
+	}
+	defer rows.Close()
+
+	jars := make([]*ScrollJar, 0, 255)
+	for rows.Next() {
+		jar := ScrollJar{UserID: &userID}
+		rows.Scan(&jar.ID, &jar.Name, &jar.Access, &jar.PasswordHash, &jar.Tags, &jar.ExpiresAt, &jar.CreatedAt, &jar.UpdatedAt)
+		jars = append(jars, &jar)
+	}
+	return jars, nil
+}
+
 func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	query := `
 		SELECT id, jar_id, title, format, created_at, updated_at
@@ -148,6 +177,7 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 			return nil, err
 		}
 	}
+	defer rows.Close()
 
 	scrolls := make([]*Scroll, 0, 255)
 	for rows.Next() {

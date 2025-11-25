@@ -7,7 +7,6 @@ import (
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-// TODO: Password check
 func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Request) {
 	id := app.readIDParam(r)
 	jar := database.ScrollJar{
