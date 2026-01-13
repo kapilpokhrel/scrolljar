@@ -5,34 +5,29 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/kapilpokhrel/scrolljar/internal/api/spec"
 )
 
 var EmailReg = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-type FieldError struct {
-	Field []string
-	Msg   string
-}
-
-type Validator struct {
-	Errors []FieldError
-}
+type Validator spec.ValidationError
 
 func New() *Validator {
-	return &Validator{Errors: make([]FieldError, 0)}
+	return &Validator{Errors: make([]spec.FieldError, 0)}
 }
 
 func (v *Validator) Valid() bool {
 	return len(v.Errors) == 0
 }
 
-func (v *Validator) AddError(e FieldError) {
+func (v *Validator) AddError(e spec.FieldError) {
 	v.Errors = append(v.Errors, e)
 }
 
 func (v *Validator) Check(ok bool, key, message string) {
 	if !ok {
-		v.AddError(FieldError{
+		v.AddError(spec.FieldError{
 			Field: strings.Split(key, "."),
 			Msg:   message,
 		})

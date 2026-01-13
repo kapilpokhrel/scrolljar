@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/julienschmidt/httprouter"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -33,11 +32,6 @@ func verifyHashPassword(password, hash string) bool {
 	return err == nil
 }
 
-func (app *Application) readIDParam(r *http.Request) string {
-	params := httprouter.ParamsFromContext(r.Context())
-	return params.ByName("id")
-}
-
 func (app *Application) getJarURI(jar *database.ScrollJar) {
 	jar.URI = fmt.Sprintf("%s/jar/%s", BaseURI, jar.ID)
 }
@@ -46,18 +40,11 @@ func (app *Application) getScrollURI(scroll *database.Scroll) {
 	scroll.URI = fmt.Sprintf("%s/scroll/%s", BaseURI, scroll.ID)
 }
 
-func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
-	jsonString, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
+func (app *Application) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 	maps.Copy(w.Header(), headers)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(jsonString)
-	w.Write([]byte("\n"))
-	return nil
+	return json.NewEncoder(w).Encode(data)
 }
 
 func (app *Application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -126,9 +113,8 @@ func generateToken(uid int64, scope string, expiryDuration time.Duration) (strin
 
 func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r *http.Request) bool {
 	user := app.contextGetUser(r)
-	jar := database.ScrollJar{
-		ID: jarID,
-	}
+	jar := database.ScrollJar{}
+	jar.ID = jarID
 
 	err := app.models.ScrollJar.Get(&jar)
 	if err != nil {

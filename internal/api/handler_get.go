@@ -4,14 +4,13 @@ import (
 	"errors"
 	"net/http"
 
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Request) {
-	id := app.readIDParam(r)
-	jar := database.ScrollJar{
-		ID: id,
-	}
+func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.JarID, params spec.GetJarParams) {
+	jar := database.ScrollJar{}
+	jar.ID = id
 	err := app.models.ScrollJar.Get(&jar)
 	if err != nil {
 		switch {
@@ -23,8 +22,8 @@ func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if jar.Access == database.AccessPrivate {
-		passwordHeader := r.Header.Get("X-Paste-Password")
+	if jar.Access == spec.AccessPrivate {
+		passwordHeader := params.XPastePassword
 		if passwordHeader == "" {
 			app.invalidCredentialsResponse(w, r)
 			return
@@ -37,6 +36,15 @@ func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.getJarURI(&jar)
+	err = app.writeJSON(w, http.StatusOK, jar.Jar, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id spec.JarID) {
+	jar := database.ScrollJar{}
+	jar.ID = id
 
 	scrolls, err := app.models.ScrollJar.GetAllScrolls(&jar)
 	if err != nil {
@@ -47,20 +55,19 @@ func (app *Application) getScrollJarHandler(w http.ResponseWriter, r *http.Reque
 		app.getScrollURI(scrolls[i])
 	}
 
-	env := envelope{"scrolljar": jar}
-	env["scrolls"] = scrolls
-
-	err = app.writeJSON(w, http.StatusOK, env, nil)
+	outputScrolls := make([]spec.Scroll, len(scrolls))
+	for i, scroll := range scrolls {
+		outputScrolls[i] = scroll.Scroll
+	}
+	err = app.writeJSON(w, http.StatusOK, outputScrolls, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
-func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request) {
-	id := app.readIDParam(r)
-	scroll := database.Scroll{
-		ID: id,
-	}
+func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spec.ScrollID, params spec.GetScrollParams) {
+	scroll := database.Scroll{}
+	scroll.ID = id
 
 	err := app.models.ScrollJar.GetScroll(&scroll)
 	if err != nil {
@@ -73,9 +80,8 @@ func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	jar := database.ScrollJar{
-		ID: scroll.JarID,
-	}
+	jar := database.ScrollJar{}
+	jar.ID = scroll.JarID
 
 	err = app.models.ScrollJar.Get(&jar)
 	if err != nil {
@@ -87,8 +93,8 @@ func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if jar.Access == database.AccessPrivate {
-		passwordHeader := r.Header.Get("X-Paste-Password")
+	if jar.Access == spec.AccessPrivate {
+		passwordHeader := params.XPastePassword
 		if passwordHeader == "" {
 			app.invalidCredentialsResponse(w, r)
 			return
@@ -102,9 +108,7 @@ func (app *Application) getScrollHandler(w http.ResponseWriter, r *http.Request)
 
 	app.getScrollURI(&scroll)
 
-	env := envelope{"scroll": scroll}
-
-	err = app.writeJSON(w, http.StatusOK, env, nil)
+	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

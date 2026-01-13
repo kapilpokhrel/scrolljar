@@ -1,0 +1,697 @@
+openapi: 3.0.3
+info:
+  title: Scrolljar API
+  description: |-
+    API interface to work with Scrolljar
+  version: 1.0.0
+
+servers:
+  - url: https://localhost:8008/v1
+
+tags:
+  - name: Misc
+    description: API server health and other endpoints
+  - name: Jar
+    description: Operations for reading, creating and deleting jars.
+  - name: Scroll
+    description: Operations for CRUD operation on scrolls
+  - name: User
+    description: Operations about user (registration, activation and auth)
+  - name: Token
+    description: Operations to generate new user token
+
+paths:
+  /ping:
+    get:
+      tags: [Misc]
+      summary: Ping to get health of server.
+      operationId: ping
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ping'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /jar:
+    post:
+      tags: [Jar]
+      summary: Route to create a new Jar
+      operationId: createJar
+      requestBody:
+        $ref: '#/components/requestBodies/JarCreation'
+      responses:
+        '200':
+          $ref: '#/components/responses/JarResponse'
+        '422':
+          $ref: '#/components/responses/ValidationErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /jar/{id}:
+    get:
+      tags: [Jar]
+      summary: Route to get a jar information
+      operationId: getJar
+      parameters:
+        - $ref: '#/components/parameters/JarId'
+        - name: X-Paste-Password
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Optional password for password protected jar
+      responses:
+        '200':
+          $ref: '#/components/responses/JarResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+    delete:
+      tags: [Jar]
+      summary: Route to delete a Jar. Deleting a Jar will all the scrolls within it.
+      operationId: deleteJar
+      parameters:
+        - $ref: '#/components/parameters/JarId'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulMessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /jar/{id}/scrolls:
+    get:
+      tags: [Scroll]
+      summary: Route to get all scrolls of a Jar
+      operationId: getJarScrolls
+      parameters:
+        - $ref: '#/components/parameters/JarId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ScrollCollectionResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /scroll/{id}:
+    post:
+      tags: [Scroll]
+      summary: Route to create a new Scroll
+      operationId: createScroll
+      parameters:
+        - $ref: '#/components/parameters/JarId'
+      requestBody:
+        $ref: '#/components/requestBodies/ScrollCreation'
+      responses:
+        '200':
+          $ref: '#/components/responses/ScrollResponse'
+        '422':
+          $ref: '#/components/responses/ValidationErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+    get:
+      tags: [Scroll]
+      summary: Route to get a scroll information
+      operationId: getScroll
+      parameters:
+        - $ref: '#/components/parameters/ScrollId'
+        - name: X-Paste-Password
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Optional password for password protected jar
+      responses:
+        '200':
+          $ref: '#/components/responses/ScrollResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+    delete:
+      tags: [Scroll]
+      summary: Route to delete a scroll
+      operationId: deleteScroll
+      parameters:
+        - $ref: '#/components/parameters/ScrollId'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulMessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+    patch:
+      tags: [Scroll]
+      summary: Route to update a scroll
+      operationId: patchScroll
+      parameters:
+        - $ref: '#/components/parameters/ScrollId'
+      requestBody:
+        $ref: '#/components/requestBodies/ScrollPatch'
+      responses:
+        '200':
+          $ref: '#/components/responses/ScrollResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /user:
+    get:
+      tags: [User]
+      summary: Route to get information about the user and the jars created by them
+      operationId: getUser
+      responses:
+        '200':
+          $ref: '#/components/responses/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /user/jars:
+    get:
+      tags: [Jar]
+      summary: Route to get list of jars creatd by the user
+      operationId: getUserJars
+      responses:
+        '200':
+          $ref: '#/components/responses/JarCollectionResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /user/register:
+    post:
+      tags: [User]
+      summary: Route to create a new User
+      operationId: createUser
+      requestBody:
+        $ref: '#/components/requestBodies/Registration'
+      responses:
+        '200':
+          $ref: '#/components/responses/UserResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /user/activate:
+    put:
+      tags: [User]
+      summary: Route to activate a new User
+      operationId: activateUser
+      requestBody:
+        $ref: '#/components/requestBodies/Activate'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulMessageResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /user/auth:
+    post:
+      tags: [User]
+      summary: Route to authenticate and get an access token
+      operationId: authUser
+      requestBody:
+        $ref: '#/components/requestBodies/Auth'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /token/activation:
+    post:
+      tags: [Token]
+      summary: Route to get a activation token of a user
+      operationId: createActivationToken
+      requestBody:
+        $ref: '#/components/requestBodies/Auth'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    JarId:
+      name: id
+      in: path 
+      required: true
+      schema:
+        type: string
+
+    ScrollId:
+      name: id
+      in: path 
+      required: true
+      schema:
+        type: string
+
+  requestBodies:
+    JarCreation:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/JarCreationType'
+
+    ScrollCreation:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScrollCreationType'
+    
+    ScrollPatch:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScrollPatch'
+
+    Registration:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Registration'
+
+    Activate:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Activate'
+
+    Auth:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Auth'
+
+  responses:
+    RateLimitExceeded:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFoundResponse:
+      description: Item not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ErrorResponse:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnauthorizedResponse:
+      description: Unauthorized user
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationErrorResponse:
+      description: Validation Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    SuccessfulMessageResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+
+    ScrollResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Scroll'
+    
+    JarResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Jar'
+
+    UserResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/User'
+    
+    JarCollectionResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/JarCollection'
+    
+    ScrollCollectionResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScrollCollection'
+
+  schemas:
+    Ping:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+        environment:
+          type: string
+        version:
+          type: string
+        uptime:
+          type: string
+      required: [status, environment, version, uptime]
+
+    Message:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+    
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+    
+    FieldError:
+      type: object
+      required: [field, msg]
+      additionalProperties: false
+      properties:
+        field:
+          type: array
+          description: array showing nested location of errorous field
+          example: [scrolls, content]
+          items:
+            type: string
+        msg:
+          description: error message
+          type: string
+
+    ValidationError:
+      type: object
+      additionalProperties: false
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    AuthTokens:
+      type: object
+      additionalProperties: false
+      required: [authorization, refresh]
+      properties:
+        authorization:
+          $ref: '#/components/schemas/Token'
+        refresh:
+          $ref: '#/components/schemas/Token'
+
+    JarAccess:
+      type: integer
+      enum: [0, 1]
+      default: 0
+      x-enum-varnames: [AccessPublic, AccessPrivate]
+
+    Jar:
+      type: object
+      additionalProperties: false
+      required: [id, access, tags, expires_at, created_at, uri]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        access:
+          $ref: '#/components/schemas/JarAccess'
+        tags:
+          type: array
+          items:
+            type: string
+          x-go-type: pgtype.FlatArray[string]
+          x-go-type-import:
+            path: github.com/jackc/pgx/v5/pgtype
+        expires_at:
+          type: string
+          format: date-time
+          x-go-type: pgtype.Timestamptz
+          x-go-type-import:
+            path: github.com/jackc/pgx/v5/pgtype
+        created_at:
+          type: string
+          format: date-time
+          x-go-type: pgtype.Timestamptz
+          x-go-type-import:
+            path: github.com/jackc/pgx/v5/pgtype
+        uri:
+          type: string
+          format: uri
+
+    JarCollection:
+      type: array 
+      items:
+        $ref: '#/components/schemas/Jar'
+
+    Scroll:
+      type: object
+      additionalProperties: false
+      required: [id, jarid, expires_at, created_at, uri, content]
+      properties:
+        id:
+          type: string
+        jarid:
+          type: string
+        title:
+          type: string
+        format:
+          type: string
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          x-go-type: pgtype.Timestamptz
+          x-go-type-import:
+            path: github.com/jackc/pgx/v5/pgtype
+        uri:
+          type: string
+          format: uri
+
+    ScrollCollection:
+      type: array 
+      items:
+        $ref: '#/components/schemas/Scroll'
+
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Token:
+      type: object
+      additionalProperties: false
+      required: [token, expiry]
+      properties:
+        token:
+          type: string
+        expiry:
+          type: string
+          format: date-time
+
+    JarCreationType:
+      type: object
+      additionalProperties: false
+      required: [name, scrolls]
+      properties:
+        name:
+          type: string
+        access:
+          $ref: '#/components/schemas/JarAccess'
+        password:
+          type: string
+          minLength: 1
+        expiry:
+          type: string
+          x-go-type: ExpiryDuration
+        tags:
+          type: array
+          items:
+            type: string
+        scrolls:
+          type: array
+          minItems: 1
+          maxItems: 254
+          items:
+            $ref: '#/components/schemas/ScrollCreationType'
+      if:
+        properties:
+          access:
+            const: 1
+      then:
+        required: [password]
+
+    ScrollCreationType:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+          minLength: 1
+        format:
+          type: string
+    
+    ScrollPatch:
+      type: object
+      additionalProperties: false
+      required: []
+      properties:
+        title:
+          type: string
+          x-go-type-skip-optional-pointer: false
+        content:
+          type: string
+          minLength: 1
+          x-go-type-skip-optional-pointer: false
+        format:
+          type: string
+          x-go-type-skip-optional-pointer: false
+
+    Registration:
+      type: object
+      additionalProperties: false
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 512
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+
+    Activate:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+
+    Auth:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+

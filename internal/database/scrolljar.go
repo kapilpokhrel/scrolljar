@@ -9,34 +9,23 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 type Scroll struct {
-	ID        string             `json:"id"`
-	JarID     string             `json:"jarid"`
-	Title     string             `json:"title,omitempty"`
-	Format    string             `json:"format,omitempty"`
-	Content   string             `json:"content,omitempty"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	spec.Scroll
 	UpdatedAt pgtype.Timestamptz `json:"-"`
-	URI       string             `json:"uri"`
 	Jar       *ScrollJar         `json:"-"`
 }
 
 type ScrollJar struct {
-	ID           string                   `json:"id"`
-	UserID       *int64                   `json:"-"`
-	Name         string                   `json:"name,omitempty"`
-	Access       int                      `json:"access"`
-	PasswordHash *string                  `json:"-"`
-	Tags         pgtype.FlatArray[string] `json:"tags"`
-	ExpiresAt    pgtype.Timestamptz       `json:"expires_at"`
-	CreatedAt    pgtype.Timestamptz       `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz       `json:"-"`
-	URI          string                   `json:"uri"`
+	spec.Jar
+	UserID       *int64             `json:"-"`
+	PasswordHash *string            `json:"-"`
+	UpdatedAt    pgtype.Timestamptz `json:"-"`
 }
 
 type ScrollJarModel struct {

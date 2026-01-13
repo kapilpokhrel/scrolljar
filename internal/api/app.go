@@ -123,7 +123,7 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 func (app *Application) Serve() error {
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.Port),
-		Handler:      app.Routes(),
+		Handler:      app.GetRouter(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,

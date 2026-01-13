@@ -6,18 +6,16 @@ import (
 	"fmt"
 	"net/http"
 
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
-func (app *Application) putUserActivationHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Token string
-	}
-
+func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
+	input := spec.Activate{}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
@@ -28,7 +26,7 @@ func (app *Application) putUserActivationHandler(w http.ResponseWriter, r *http.
 		"token must not be empty",
 	)
 	if !v.Valid() {
-		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
 	}
 
@@ -42,17 +40,16 @@ func (app *Application) putUserActivationHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
-			v.AddError(validator.FieldError{Field: []string{"token"}, Msg: "token doesn't exist"})
-			app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+			v.AddError(spec.FieldError{Field: []string{"token"}, Msg: "token doesn't exist"})
+			app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
 		return
 	}
 
-	user := &database.User{
-		ID: token.UserID,
-	}
+	user := &database.User{}
+	user.ID = token.UserID
 	err = app.models.Users.GetByID(user)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -71,5 +68,9 @@ func (app *Application) putUserActivationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	app.writeJSON(w, http.StatusOK, envelope{"message": fmt.Sprintf("%s (%s) activated", user.Username, user.Email)}, nil)
+	payload := spec.Message{
+		Message: fmt.Sprintf("%s (%s) activated", user.Username, user.Email),
+	}
+
+	app.writeJSON(w, http.StatusOK, payload, nil)
 }

@@ -4,32 +4,27 @@ import (
 	"errors"
 	"net/http"
 
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 )
 
-func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id spec.ScrollID) {
 	user := app.contextGetUser(r)
 	if user == nil {
 		app.invalidCredentialsResponse(w, r)
 		return
 	}
 
-	var input struct {
-		Title   *string `json:"title"`
-		Content *string `json:"content"`
-		Format  *string `json:"format"`
-	}
+	input := spec.ScrollPatch{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	id := app.readIDParam(r)
-	scroll := database.Scroll{
-		ID: id,
-	}
+	scroll := database.Scroll{}
+	scroll.ID = id
 
 	err = app.models.ScrollJar.GetScroll(&scroll)
 	if err != nil {
@@ -61,17 +56,14 @@ func (app *Application) patchScrollHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
-			app.errorResponse(w, r, http.StatusConflict, "edit config; please try again")
+			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit config; please try again"})
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
 		return
 	}
 	app.getScrollURI(&scroll)
-
-	env := envelope{"scroll": scroll}
-
-	err = app.writeJSON(w, http.StatusOK, env, nil)
+	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

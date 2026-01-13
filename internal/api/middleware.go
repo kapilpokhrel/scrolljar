@@ -140,9 +140,9 @@ func (app *Application) authenticateUser(next http.Handler) http.Handler {
 			return
 		}
 
-		user := &database.User{
-			ID: token.UserID,
-		}
+		user := &database.User{}
+		user.ID = token.UserID
+
 		err = app.models.Users.GetByID(user)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)

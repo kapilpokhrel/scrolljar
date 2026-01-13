@@ -1,14 +1,15 @@
 package api
 
 import (
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/justinas/alice"
+	"github.com/kapilpokhrel/scrolljar/internal/api/spec"
 )
 
-func (app *Application) ping(w http.ResponseWriter, r *http.Request) {
+func (app *Application) Ping(w http.ResponseWriter, r *http.Request) {
 	output := envelope{
 		"status":      "running",
 		"uptime":      time.Since(app.startTime).String(),
@@ -18,37 +19,94 @@ func (app *Application) ping(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, output, nil)
 }
 
-func (app *Application) Routes() http.Handler {
-	// httprouter is fast alternative for http.ServerMux
-	router := httprouter.New()
+type IPTier string
 
-	commonChain := alice.New(app.recoverPanic, app.globalRateLimiter)
-	generalIPLimitChain := alice.New(app.ipRateLimiter("general"), app.authenticateUser)
-	mediumIPLimitChain := alice.New(app.ipRateLimiter("medium"), app.authenticateUser)
-	strictIPLimitChain := alice.New(app.ipRateLimiter("strict"), app.authenticateUser)
-	authenticatedChain := mediumIPLimitChain.Append(app.requireAuthenticatedUser)
+const (
+	IPGeneral IPTier = "general"
+	IPMedium  IPTier = "medium"
+	IPStrict  IPTier = "strict"
+)
 
-	router.NotFound = http.HandlerFunc(app.notFoundResponse)
-	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
+var ipPolicy = map[string]IPTier{
+	"GET /ping": IPGeneral,
 
-	router.Handler(http.MethodGet, "/v1/ping", generalIPLimitChain.Then(http.HandlerFunc(app.ping)))
+	"GET /jar":         IPGeneral,
+	"POST /jar":        IPMedium,
+	"DELETE /jar":      IPMedium,
+	"GET /jar/scrolls": IPGeneral,
 
-	router.Handler(http.MethodPost, "/v1/jar", mediumIPLimitChain.Then(http.HandlerFunc(app.postCreateScrollJarHandler)))
-	router.Handler(http.MethodGet, "/v1/jar/:id", generalIPLimitChain.Then(http.HandlerFunc(app.getScrollJarHandler)))
-	router.Handler(http.MethodDelete, "/v1/jar/:id", authenticatedChain.Then(http.HandlerFunc(app.deleteScrollJarHandler)))
+	"GET /scroll":    IPGeneral,
+	"POST /scroll":   IPMedium,
+	"PATCH /scroll":  IPMedium,
+	"DELETE /scroll": IPMedium,
 
-	router.Handler(http.MethodPost, "/v1/scroll/:id", mediumIPLimitChain.Then(http.HandlerFunc(app.postCreateScrollHandler)))
-	router.Handler(http.MethodGet, "/v1/scroll/:id", generalIPLimitChain.Then(http.HandlerFunc(app.getScrollHandler)))
-	router.Handler(http.MethodPatch, "/v1/scroll/:id", authenticatedChain.Then(http.HandlerFunc(app.patchScrollHandler)))
-	router.Handler(http.MethodDelete, "/v1/scroll/:id", authenticatedChain.Then(http.HandlerFunc(app.deleteScrollHandler)))
+	"GET /user":           IPMedium,
+	"POST /user/auth":     IPMedium,
+	"POST /user/register": IPStrict,
+	"PUT /user/activate":  IPStrict,
+	"GET /user/jars":      IPGeneral,
 
-	router.Handler(http.MethodPost, "/v1/user/register", strictIPLimitChain.Then(http.HandlerFunc(app.postUserRegisterHandler)))
-	router.Handler(http.MethodPut, "/v1/user/activate", strictIPLimitChain.Then(http.HandlerFunc(app.putUserActivationHandler)))
-	router.Handler(http.MethodPost, "/v1/user/auth", mediumIPLimitChain.Then(http.HandlerFunc(app.postUserAuthHandler)))
+	"POST /token/activation": IPStrict,
+}
 
-	router.Handler(http.MethodGet, "/v1/user/get", authenticatedChain.Then(http.HandlerFunc(app.getUsersJarHandler)))
+func (app *Application) ipLimitPolicyMiddleware(next http.Handler) http.Handler {
+	baseURL := "/v1"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path, _ := strings.CutPrefix(r.URL.Path, baseURL)
+		key := r.Method + " " + path
+		tier := ipPolicy[key]
+		if tier == "" {
+			tier = IPGeneral
+		}
 
-	router.Handler(http.MethodPost, "/v1/token/activation", strictIPLimitChain.Then(http.HandlerFunc(app.postUserActivationTokenHandler)))
+		app.ipRateLimiter(string(tier))(next).ServeHTTP(w, r)
+	})
+}
 
-	return commonChain.Then(router)
+func (app *Application) requireAuthIfContextFlag(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if the context has BearerAuthScopes key
+		if _, ok := r.Context().Value(spec.BearerAuthScopes).([]string); ok {
+			app.requireAuthenticatedUser(next).ServeHTTP(w, r)
+			return
+		}
+
+		// No flag → skip auth
+		next.ServeHTTP(w, r)
+	})
+}
+
+func debugMiddleware(name string) spec.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return next
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Println("ENTER", name)
+			next.ServeHTTP(w, r)
+			log.Println("EXIT ", name)
+		})
+	}
+}
+
+func (app *Application) GetRouter() http.Handler {
+	router := http.NewServeMux()
+	middlewares := []spec.MiddlewareFunc{
+		debugMiddleware("require_auth"),
+		app.requireAuthIfContextFlag,
+		debugMiddleware("auth"),
+		app.authenticateUser,
+		debugMiddleware("ip"),
+		app.ipLimitPolicyMiddleware,
+		debugMiddleware("rate"),
+		app.globalRateLimiter,
+		debugMiddleware("recover"),
+		app.recoverPanic,
+	}
+
+	handler := spec.HandlerWithOptions(app, spec.StdHTTPServerOptions{
+		BaseURL:     "/v1",
+		BaseRouter:  router,
+		Middlewares: middlewares,
+	})
+
+	return handler
 }

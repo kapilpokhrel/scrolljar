@@ -9,15 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 )
 
 type User struct {
-	ID           int64              `json:"id"`
-	Username     string             `json:"username"`
+	spec.User
 	Email        string             `json:"-"`
 	Activated    bool               `json:"-"`
 	PasswordHash string             `json:"-"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"-"`
 }
 

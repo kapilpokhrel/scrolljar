@@ -4,67 +4,40 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
-type expiryDuration struct {
-	Duration *time.Duration
-}
-
-var errInvalidExpiryFormat = errors.New("invalid expiry duration foramt")
-
-func (d *expiryDuration) UnmarshalJSON(jsonValue []byte) error {
-	val, err := strconv.Unquote(string(jsonValue))
-	if err != nil {
-		return errInvalidExpiryFormat
-	}
-	dur, err := time.ParseDuration(val)
-	if err != nil {
-		return errInvalidExpiryFormat
-	}
-	d.Duration = &dur
-	return nil
-}
-
-func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Name     string            `json:"name"`
-		Access   int               `json:"access"`
-		Password string            `json:"password"`
-		Expiry   expiryDuration    `json:"expiry"`
-		Tags     []string          `json:"tags"`
-		Scrolls  []database.Scroll `json:"scrolls"`
-	}
-
+func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
+	input := spec.JarCreationType{}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	v := validator.New()
 	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) >= time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
-	v.Check(input.Access <= database.AccessPrivate, "access", "access type can be one of 0, 1")
-	v.Check(input.Access == database.AccessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
+	v.Check(input.Access <= spec.AccessPrivate, "access", "access type can be one of 0, 1")
+	v.Check(input.Access == spec.AccessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
 	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
 	for i, scroll := range input.Scrolls {
 		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
 	}
 	if !v.Valid() {
-		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
 	}
 
-	jar := &database.ScrollJar{
-		Name:   input.Name,
-		Access: input.Access,
-		Tags:   input.Tags,
-	}
+	jar := &database.ScrollJar{}
+	jar.Name = input.Name
+	jar.Access = input.Access
+	jar.Tags = input.Tags
+
 	if input.Password != "" {
 		pwHash, err := hashPassword(input.Password)
 		if err != nil {
@@ -91,43 +64,34 @@ func (app *Application) postCreateScrollJarHandler(w http.ResponseWriter, r *htt
 	}
 
 	app.getJarURI(jar)
-	scrollURIs := []string{}
-	for _, scroll := range input.Scrolls {
+	for _, inputScroll := range input.Scrolls {
+		scroll := database.Scroll{}
+		scroll.JarID = jar.ID
 		scroll.Jar = jar
+		scroll.Title = inputScroll.Title
+		scroll.Format = inputScroll.Format
+		scroll.Content = inputScroll.Content
 		err = app.models.ScrollJar.InsertScroll(&scroll)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
 			return
 		}
-		app.getScrollURI(&scroll)
-		scrollURIs = append(scrollURIs, scroll.URI)
 	}
-
-	outputPayload := envelope{
-		"uri":     jar.URI,
-		"scrolls": scrollURIs,
-	}
-	app.writeJSON(w, http.StatusOK, outputPayload, nil)
+	app.writeJSON(w, http.StatusOK, jar.Jar, nil)
 }
 
-func (app *Application) postCreateScrollHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
-		Format  string `json:"format"`
-	}
+func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id spec.JarID) {
+	input := spec.ScrollCreationType{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	id := app.readIDParam(r)
+	jar := database.ScrollJar{}
+	jar.ID = id
 
-	jar := database.ScrollJar{
-		ID: id,
-	}
 	err = app.models.ScrollJar.Get(&jar)
 	if err != nil {
 		switch {
@@ -142,15 +106,17 @@ func (app *Application) postCreateScrollHandler(w http.ResponseWriter, r *http.R
 	v := validator.New()
 	v.Check(len(input.Content) > 0, "content", "content can't be empty")
 	if !v.Valid() {
-		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
 	}
 
 	scroll := database.Scroll{
-		Title:   input.Title,
-		Content: input.Content,
-		Format:  input.Format,
-		Jar:     &jar,
+		Scroll: spec.Scroll{
+			Title:   input.Title,
+			Content: input.Content,
+			Format:  input.Format,
+		},
+		Jar: &jar,
 	}
 
 	err = app.models.ScrollJar.InsertScroll(&scroll)
@@ -160,9 +126,7 @@ func (app *Application) postCreateScrollHandler(w http.ResponseWriter, r *http.R
 	}
 	app.getScrollURI(&scroll)
 
-	env := envelope{"scroll": scroll}
-
-	err = app.writeJSON(w, http.StatusOK, env, nil)
+	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

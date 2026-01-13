@@ -5,25 +5,23 @@ import (
 	"net/http"
 	"time"
 
+	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
-func (app *Application) postUserActivationTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Request) {
+	input := spec.Auth{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	v := validator.New()
 	v.Check(
-		validator.Matches(input.Email, validator.EmailReg),
+		validator.Matches(string(input.Email), validator.EmailReg),
 		"email",
 		"must be a valid email address",
 	)
@@ -34,12 +32,12 @@ func (app *Application) postUserActivationTokenHandler(w http.ResponseWriter, r 
 	)
 
 	if !v.Valid() {
-		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
 	}
 
 	user := &database.User{
-		Email: input.Email,
+		Email: string(input.Email),
 	}
 
 	err = app.models.Users.GetUserByEmail(user)
@@ -58,7 +56,7 @@ func (app *Application) postUserActivationTokenHandler(w http.ResponseWriter, r 
 	}
 
 	if user.Activated {
-		app.errorResponse(w, r, http.StatusServiceUnavailable, "account already activated")
+		app.errorResponse(w, r, http.StatusServiceUnavailable, spec.Error{Error: "account already activated"})
 		return
 	}
 
@@ -70,5 +68,10 @@ func (app *Application) postUserActivationTokenHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	app.writeJSON(w, http.StatusOK, envelope{"token": tokenText, "expiry": token.ExpiresAt.Time.UTC()}, nil)
+	payload := spec.Token{
+		Token:  tokenText,
+		Expiry: token.ExpiresAt.Time.UTC(),
+	}
+
+	app.writeJSON(w, http.StatusOK, payload, nil)
 }

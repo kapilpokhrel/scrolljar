@@ -5,20 +5,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
-func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
+	input := spec.Registration{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
@@ -29,7 +26,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		"username must be withing 1-512 charcters",
 	)
 	v.Check(
-		validator.Matches(input.Email, validator.EmailReg),
+		validator.Matches(string(input.Email), validator.EmailReg),
 		"email",
 		"must be a valid email address",
 	)
@@ -40,7 +37,7 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 	)
 
 	if !v.Valid() {
-		app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
 	}
 
@@ -49,18 +46,17 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	user := &database.User{
-		Username:     input.Username,
-		Email:        input.Email,
-		PasswordHash: pwHash,
-	}
+	user := &database.User{}
+	user.Username = input.Username
+	user.Email = string(input.Email)
+	user.PasswordHash = pwHash
 
 	err = app.models.Users.Insert(user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUser):
-			v.AddError(validator.FieldError{Field: []string{"email"}, Msg: "Duplicate email"})
-			app.errorResponse(w, r, http.StatusUnprocessableEntity, v.Errors)
+			v.AddError(spec.FieldError{Field: []string{"email"}, Msg: "Duplicate email"})
+			app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
@@ -92,5 +88,5 @@ func (app *Application) postUserRegisterHandler(w http.ResponseWriter, r *http.R
 			}
 		}
 	}, "Registration Mail")
-	app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+	app.writeJSON(w, http.StatusOK, user.User, nil)
 }
