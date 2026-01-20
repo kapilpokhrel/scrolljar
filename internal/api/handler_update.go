@@ -9,12 +9,6 @@ import (
 )
 
 func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id spec.ScrollID) {
-	user := app.contextGetUser(r)
-	if user == nil {
-		app.invalidCredentialsResponse(w, r)
-		return
-	}
-
 	input := spec.ScrollPatch{}
 
 	err := app.readJSON(w, r, &input)

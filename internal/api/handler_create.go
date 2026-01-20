@@ -114,6 +114,11 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
+	if !app.verifyJarCreator(id, w, r) {
+		app.invalidCredentialsResponse(w, r)
+		return
+	}
+
 	v := validator.New()
 	v.Check(len(input.Content) > 0, "content", "content can't be empty")
 	if !v.Valid() {

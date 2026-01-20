@@ -128,6 +128,8 @@ paths:
           $ref: '#/components/responses/RateLimitExceeded'
         default:
           $ref: '#/components/responses/ErrorResponse'
+      security:
+        - BearerAuth: []
     get:
       tags: [Scroll]
       summary: Route to get a scroll information
