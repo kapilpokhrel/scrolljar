@@ -28,6 +28,11 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	for i, scroll := range input.Scrolls {
 		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
 	}
+
+	user := app.contextGetUser(r)
+
+	DurYear := time.Hour * 25 * 365
+	v.Check(user != nil || input.Expiry.Duration == nil || *(input.Expiry.Duration) < DurYear, "expiry", "Duration of anonymouns jar must be less than a yaer")
 	if !v.Valid() {
 		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
@@ -46,17 +51,23 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		}
 		jar.PasswordHash = &pwHash
 	}
-	user := app.contextGetUser(r)
+
+	switch {
+	case user == nil && input.Expiry.Duration == nil:
+		jar.ExpiresAt = pgtype.Timestamptz{
+			Time: time.Now().Add(DurYear), // By default (for anon), we use 1 year expiry
+		}
+	case input.Expiry.Duration != nil:
+		jar.ExpiresAt = pgtype.Timestamptz{
+			Time: time.Now().Add(*input.Expiry.Duration),
+		}
+	}
+
 	if user != nil {
 		userID := user.ID
 		jar.UserID = &userID
 	}
 
-	if input.Expiry.Duration != nil {
-		jar.ExpiresAt = pgtype.Timestamptz{
-			Time: time.Now().Add(*input.Expiry.Duration),
-		}
-	}
 	err = app.models.ScrollJar.Insert(jar)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
