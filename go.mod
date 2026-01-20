@@ -3,6 +3,7 @@ module github.com/kapilpokhrel/scrolljar
 go 1.25.1
 
 require (
+	github.com/flowchartsman/swaggerui v0.0.0-20221017034628-909ed4f3701b
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.2

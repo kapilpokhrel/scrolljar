@@ -288,7 +288,6 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 // CreateJar operation middleware
 func (siw *ServerInterfaceWrapper) CreateJar(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateJar(w, r)
 	}))
@@ -302,7 +301,6 @@ func (siw *ServerInterfaceWrapper) CreateJar(w http.ResponseWriter, r *http.Requ
 
 // DeleteJar operation middleware
 func (siw *ServerInterfaceWrapper) DeleteJar(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -333,7 +331,6 @@ func (siw *ServerInterfaceWrapper) DeleteJar(w http.ResponseWriter, r *http.Requ
 
 // GetJar operation middleware
 func (siw *ServerInterfaceWrapper) GetJar(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -382,7 +379,6 @@ func (siw *ServerInterfaceWrapper) GetJar(w http.ResponseWriter, r *http.Request
 
 // GetJarScrolls operation middleware
 func (siw *ServerInterfaceWrapper) GetJarScrolls(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -407,7 +403,6 @@ func (siw *ServerInterfaceWrapper) GetJarScrolls(w http.ResponseWriter, r *http.
 
 // Ping operation middleware
 func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Ping(w, r)
 	}))
@@ -421,7 +416,6 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 
 // DeleteScroll operation middleware
 func (siw *ServerInterfaceWrapper) DeleteScroll(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -452,7 +446,6 @@ func (siw *ServerInterfaceWrapper) DeleteScroll(w http.ResponseWriter, r *http.R
 
 // GetScroll operation middleware
 func (siw *ServerInterfaceWrapper) GetScroll(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -501,7 +494,6 @@ func (siw *ServerInterfaceWrapper) GetScroll(w http.ResponseWriter, r *http.Requ
 
 // PatchScroll operation middleware
 func (siw *ServerInterfaceWrapper) PatchScroll(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -532,7 +524,6 @@ func (siw *ServerInterfaceWrapper) PatchScroll(w http.ResponseWriter, r *http.Re
 
 // CreateScroll operation middleware
 func (siw *ServerInterfaceWrapper) CreateScroll(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -563,7 +554,6 @@ func (siw *ServerInterfaceWrapper) CreateScroll(w http.ResponseWriter, r *http.R
 
 // CreateActivationToken operation middleware
 func (siw *ServerInterfaceWrapper) CreateActivationToken(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateActivationToken(w, r)
 	}))
@@ -577,7 +567,6 @@ func (siw *ServerInterfaceWrapper) CreateActivationToken(w http.ResponseWriter, 
 
 // GetUser operation middleware
 func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
-
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
@@ -597,7 +586,6 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 
 // ActivateUser operation middleware
 func (siw *ServerInterfaceWrapper) ActivateUser(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ActivateUser(w, r)
 	}))
@@ -611,7 +599,6 @@ func (siw *ServerInterfaceWrapper) ActivateUser(w http.ResponseWriter, r *http.R
 
 // AuthUser operation middleware
 func (siw *ServerInterfaceWrapper) AuthUser(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthUser(w, r)
 	}))
@@ -625,7 +612,6 @@ func (siw *ServerInterfaceWrapper) AuthUser(w http.ResponseWriter, r *http.Reque
 
 // GetUserJars operation middleware
 func (siw *ServerInterfaceWrapper) GetUserJars(w http.ResponseWriter, r *http.Request) {
-
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
@@ -645,7 +631,6 @@ func (siw *ServerInterfaceWrapper) GetUserJars(w http.ResponseWriter, r *http.Re
 
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateUser(w, r)
 	}))

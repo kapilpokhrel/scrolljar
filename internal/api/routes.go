@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowchartsman/swaggerui"
 	"github.com/kapilpokhrel/scrolljar/internal/api/spec"
 )
 
@@ -89,6 +90,8 @@ func debugMiddleware(name string) spec.MiddlewareFunc {
 
 func (app *Application) GetRouter() http.Handler {
 	router := http.NewServeMux()
+	router.Handle("GET /swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec.SpecFile)))
+
 	middlewares := []spec.MiddlewareFunc{
 		debugMiddleware("require_auth"),
 		app.requireAuthIfContextFlag,
