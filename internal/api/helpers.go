@@ -116,6 +116,7 @@ func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r 
 	jar := database.ScrollJar{}
 	jar.ID = jarID
 
+	// TODO: Make a seperate SQL to only query the id which is indexed and fast and is sufficient
 	err := app.models.ScrollJar.Get(&jar)
 	if err != nil {
 		switch {

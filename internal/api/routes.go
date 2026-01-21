@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,47 +21,67 @@ func (app *Application) Ping(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, output, nil)
 }
 
-type IPTier string
+type routeIPPolicy struct {
+	method  string
+	pattern *regexp.Regexp
+	level   string
+	mw      func(http.Handler) http.Handler
+}
 
-const (
-	IPGeneral IPTier = "general"
-	IPMedium  IPTier = "medium"
-	IPStrict  IPTier = "strict"
-)
+type RateLimiterFactory func(string) func(http.Handler) http.Handler
 
-var ipPolicy = map[string]IPTier{
-	"GET /ping": IPGeneral,
+type routeIPLimiter struct {
+	policies []routeIPPolicy
+}
 
-	"GET /jar":         IPGeneral,
-	"POST /jar":        IPMedium,
-	"DELETE /jar":      IPMedium,
-	"GET /jar/scrolls": IPGeneral,
+func NewRouteIPLimiter(factory RateLimiterFactory) routeIPLimiter {
+	policies := []routeIPPolicy{
+		{"GET", regexp.MustCompile(`^/ping$`), "General", nil},
 
-	"GET /scroll":    IPGeneral,
-	"POST /scroll":   IPMedium,
-	"PATCH /scroll":  IPMedium,
-	"DELETE /scroll": IPMedium,
+		{"POST", regexp.MustCompile(`^/jar$`), "Medium", nil},
+		{"GET", regexp.MustCompile(`^/jar/[^/]+$`), "General", nil},
+		{"DELETE", regexp.MustCompile(`^/jar/[^/]+$`), "Medium", nil},
+		{"GET", regexp.MustCompile(`^/jar/[^/]+/scrolls$`), "General", nil},
 
-	"GET /user":           IPMedium,
-	"POST /user/auth":     IPMedium,
-	"POST /user/register": IPStrict,
-	"PUT /user/activate":  IPStrict,
-	"GET /user/jars":      IPGeneral,
+		{"GET", regexp.MustCompile(`^/scroll/[^/]+$`), "General", nil},
+		{"POST", regexp.MustCompile(`^/scroll/[^/]+$`), "Medium", nil},
+		{"PATCH", regexp.MustCompile(`^/scroll/[^/]+$`), "Medium", nil},
+		{"DELETE", regexp.MustCompile(`^/scroll/[^/]+$`), "Medium", nil},
 
-	"POST /token/activation": IPStrict,
+		{"GET", regexp.MustCompile(`^/user$`), "Medium", nil},
+		{"POST", regexp.MustCompile(`^/user/auth$`), "Medium", nil},
+		{"POST", regexp.MustCompile(`^/user/register$`), "Strict", nil},
+		{"PUT", regexp.MustCompile(`^/user/activate$`), "Strict", nil},
+		{"GET", regexp.MustCompile(`^/user/jars$`), "General", nil},
+
+		{"POST", regexp.MustCompile(`^/token/activation$`), "Strict", nil},
+	}
+	for i, p := range policies {
+		policies[i].mw = factory(p.level)
+	}
+
+	return routeIPLimiter{
+		policies: policies,
+	}
+}
+
+func (r *routeIPLimiter) Get(method, path string) func(http.Handler) http.Handler {
+	for _, p := range r.policies {
+		if p.method == method && p.pattern.MatchString(path) {
+			return p.mw
+		}
+	}
+	return nil
 }
 
 func (app *Application) ipLimitPolicyMiddleware(next http.Handler) http.Handler {
 	baseURL := "/v1"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path, _ := strings.CutPrefix(r.URL.Path, baseURL)
-		key := r.Method + " " + path
-		tier := ipPolicy[key]
-		if tier == "" {
-			tier = IPGeneral
+		limiter := app.ipLimiter.Get(r.Method, path)
+		if limiter != nil {
+			limiter(next).ServeHTTP(w, r)
 		}
-
-		app.ipRateLimiter(string(tier))(next).ServeHTTP(w, r)
 	})
 }
 

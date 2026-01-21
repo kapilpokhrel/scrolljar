@@ -60,6 +60,7 @@ type Application struct {
 	mailer    mailer.Mailer
 	wg        sync.WaitGroup
 	startTime time.Time
+	ipLimiter routeIPLimiter
 }
 
 func parseFlags() Config {
@@ -110,14 +111,16 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Application{
+	app := &Application{
 		config:    cfg,
 		dbPool:    dbPool,
 		logger:    logger,
 		models:    database.NewModels(dbPool),
 		mailer:    mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
 		startTime: time.Now(),
-	}, nil
+	}
+	app.ipLimiter = NewRouteIPLimiter(app.ipRateLimiter)
+	return app, nil
 }
 
 func (app *Application) Serve() error {
