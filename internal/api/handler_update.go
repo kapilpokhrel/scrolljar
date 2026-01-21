@@ -42,15 +42,12 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	if input.Format != nil {
 		scroll.Format = *input.Format
 	}
-	if input.Content != nil {
-		scroll.Content = *input.Content
-	}
 
 	err = app.models.ScrollJar.UpdateScroll(&scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
-			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit config; please try again"})
+			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit confict; please try again"})
 		default:
 			app.serverErrorResponse(w, r, err)
 		}

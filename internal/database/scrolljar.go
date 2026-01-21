@@ -17,6 +17,7 @@ const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 type Scroll struct {
 	spec.Scroll
+	S3URL     string             `json:"-"`
 	UpdatedAt pgtype.Timestamptz `json:"-"`
 	Jar       *ScrollJar         `json:"-"`
 }
@@ -70,8 +71,8 @@ func (m ScrollJarModel) Insert(jar *ScrollJar) error {
 
 func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 	query := `
-		INSERT INTO scroll (id, jar_id, title, format, content)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO scroll (id, jar_id, title, format)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, jar_id, created_at, updated_at
 	`
 	for {
@@ -80,7 +81,7 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 			return err
 		}
 
-		args := []any{slug, scroll.Jar.ID, scroll.Title, scroll.Format, scroll.Content}
+		args := []any{slug, scroll.Jar.ID, scroll.Title, scroll.Format}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -198,14 +199,14 @@ func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
-		SELECT jar_id, title, format, content, created_at, updated_at
+		SELECT jar_id, title, format, created_at, updated_at
 		FROM scroll
 		WHERE id = $1
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Content, &scroll.CreatedAt, &scroll.UpdatedAt)
+	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -217,7 +218,7 @@ func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 	query := `
 		UPDATE scroll
-		SET title = $1, format = $2, content = $3
+		SET title = $1, format = $2
 		WHERE id = $4 AND updated_at = $5
 		RETURNING updated_at
 	`
@@ -228,7 +229,7 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 	err := m.DBPool.QueryRow(
 		ctx,
 		query,
-		scroll.Title, scroll.Format, scroll.Content,
+		scroll.Title, scroll.Format,
 		scroll.ID, scroll.UpdatedAt.Time,
 	).Scan(&scroll.UpdatedAt)
 	switch {

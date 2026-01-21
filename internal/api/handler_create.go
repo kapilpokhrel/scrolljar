@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 )
 
 func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
-	input := spec.JarCreationType{}
+	input := spec.JarCreation{}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -25,9 +24,6 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	v.Check(input.Access <= spec.AccessPrivate, "access", "access type can be one of 0, 1")
 	v.Check(input.Access == spec.AccessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
 	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
-	for i, scroll := range input.Scrolls {
-		v.Check(len(scroll.Content) > 0, fmt.Sprintf("scrolls[%d].content", i), "scroll content can't be empty")
-	}
 
 	user := app.contextGetUser(r)
 
@@ -75,20 +71,36 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.getJarURI(jar)
+
+	createdScrolls := make([]spec.ScrollCreationResponse, 0, len(input.Scrolls))
 	for _, inputScroll := range input.Scrolls {
 		scroll := database.Scroll{}
 		scroll.JarID = jar.ID
 		scroll.Jar = jar
 		scroll.Title = inputScroll.Title
 		scroll.Format = inputScroll.Format
-		scroll.Content = inputScroll.Content
 		err = app.models.ScrollJar.InsertScroll(&scroll)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
+			// TODO: NEED TO DO THE CLEANUP
 			return
 		}
+
+		app.getScrollURI(&scroll)
+		uploadToken, _ := createScrollRWToken(scroll.ID)
+		createdScrolls = append(createdScrolls, spec.ScrollCreationResponse{
+			Scroll:      scroll.Scroll,
+			UploadToken: uploadToken,
+		})
 	}
-	app.writeJSON(w, http.StatusOK, jar.Jar, nil)
+	app.writeJSON(w, http.StatusOK, spec.JarCreationResponse{
+		Jar:     jar.Jar,
+		Scrolls: createdScrolls,
+	}, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id spec.JarID) {
@@ -119,18 +131,10 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	v := validator.New()
-	v.Check(len(input.Content) > 0, "content", "content can't be empty")
-	if !v.Valid() {
-		app.validationErrorResponse(w, r, spec.ValidationError(*v))
-		return
-	}
-
 	scroll := database.Scroll{
 		Scroll: spec.Scroll{
-			Title:   input.Title,
-			Content: input.Content,
-			Format:  input.Format,
+			Title:  input.Title,
+			Format: input.Format,
 		},
 		Jar: &jar,
 	}
@@ -141,8 +145,11 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	app.getScrollURI(&scroll)
-
-	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
+	uploadToken, _ := createScrollRWToken(scroll.ID)
+	err = app.writeJSON(w, http.StatusOK, spec.ScrollCreationResponse{
+		Scroll:      scroll.Scroll,
+		UploadToken: uploadToken,
+	}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

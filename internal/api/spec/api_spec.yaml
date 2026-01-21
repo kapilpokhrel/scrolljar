@@ -47,7 +47,7 @@ paths:
         $ref: '#/components/requestBodies/JarCreation'
       responses:
         '200':
-          $ref: '#/components/responses/JarResponse'
+          $ref: '#/components/responses/JarCreationResponse'
         '422':
           $ref: '#/components/responses/ValidationErrorResponse'
         '429':
@@ -121,7 +121,7 @@ paths:
         $ref: '#/components/requestBodies/ScrollCreation'
       responses:
         '200':
-          $ref: '#/components/responses/ScrollResponse'
+          $ref: '#/components/responses/ScrollCreationResponse'
         '422':
           $ref: '#/components/responses/ValidationErrorResponse'
         '429':
@@ -412,6 +412,20 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Jar'
+    
+    JarCreationResponse:
+      description: Operation Successful
+      content:
+        application/json: 
+          schema:
+            $ref: '#/components/schemas/JarCreationResponse'
+      
+    ScrollCreationResponse:
+      description: Operation Successful
+      content:
+        application/json: 
+          schema:
+            $ref: '#/components/schemas/ScrollCreationResponse'
 
     UserResponse:
       description: Operation Successful
@@ -536,6 +550,28 @@ components:
         uri:
           type: string
           format: uri
+      
+    JarCreationResponse:
+      type: object
+      additionalProperties: false
+      required: [jar, scrolls]
+      properties:
+        jar:
+          $ref: "#/components/schemas/Jar"
+        scrolls:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScrollCreationResponse"
+    
+    ScrollCreationResponse:
+      type: object
+      additionalProperties: false
+      required: [upload_token, expiry]
+      properties:
+        scroll:
+          $ref: "#/components/schemas/Scroll"
+        upload_token:
+          type: string
 
     JarCollection:
       type: array 
@@ -545,7 +581,7 @@ components:
     Scroll:
       type: object
       additionalProperties: false
-      required: [id, jarid, expires_at, created_at, uri, content]
+      required: [id, jarid, created_at, uri]
       properties:
         id:
           type: string
@@ -554,8 +590,6 @@ components:
         title:
           type: string
         format:
-          type: string
-        content:
           type: string
         created_at:
           type: string
@@ -632,27 +666,18 @@ components:
     ScrollCreationType:
       type: object
       additionalProperties: false
-      required: [content]
       properties:
         title:
           type: string
-        content:
-          type: string
-          minLength: 1
         format:
           type: string
     
     ScrollPatch:
       type: object
       additionalProperties: false
-      required: []
       properties:
         title:
           type: string
-          x-go-type-skip-optional-pointer: false
-        content:
-          type: string
-          minLength: 1
           x-go-type-skip-optional-pointer: false
         format:
           type: string
@@ -696,4 +721,3 @@ components:
           type: string
           minLength: 8
           maxLength: 72
-

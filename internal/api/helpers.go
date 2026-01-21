@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"golang.org/x/crypto/bcrypt"
@@ -131,4 +132,38 @@ func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r 
 		return false
 	}
 	return true
+}
+
+var secretKey = []byte("<SECRET_KEY>")
+
+func createScrollRWToken(scrollID string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"scrollID": scrollID,
+			"exp":      time.Now().Add(time.Minute * 5).Unix(),
+		})
+
+	tokenString, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func verifyScrollRWToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		return secretKey, nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if !token.Valid {
+		return "", fmt.Errorf("invalid token")
+	}
+
+	mapClaim := (token.Claims).(jwt.MapClaims)
+
+	return mapClaim["scrollID"].(string), nil
 }

@@ -17,7 +17,7 @@ CREATE TABLE scroll (
     jar_id CHAR(8) NOT NULL REFERENCES scrolljar(id) ON DELETE CASCADE,
     title TEXT,
     format TEXT,
-    content TEXT NOT NULL,
+    s3_url TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
