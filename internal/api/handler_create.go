@@ -13,8 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
-	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
+
+var DurYear time.Duration = time.Hour * 25 * 365
 
 func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	input := spec.JarCreation{}
@@ -24,16 +25,8 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := validator.New()
-	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) > time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
-	v.Check(input.Access <= spec.AccessPrivate, "access", "access type can be one of 0, 1")
-	v.Check(input.Access == spec.AccessPublic || len(input.Password) != 0, "password", "password can't be empty when access is private")
-	v.Check(len(input.Scrolls) < 255, "scrolls", "no of scrolls can't be greater than 254")
-
 	user := app.contextGetUser(r)
-
-	DurYear := time.Hour * 25 * 365
-	v.Check(user != nil || input.Expiry.Duration == nil || *(input.Expiry.Duration) < DurYear, "expiry", "Duration of anonymouns jar must be less than a yaer")
+	v := input.Validate(user != nil)
 	if !v.Valid() {
 		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
@@ -131,6 +124,11 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+
+	if jar.ExpiresAt.Time.Before(time.Now()) {
+		app.notFoundResponse(w, r)
 		return
 	}
 

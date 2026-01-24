@@ -8,7 +8,6 @@ import (
 
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
-	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
 func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
@@ -19,12 +18,7 @@ func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := validator.New()
-	v.Check(
-		len(input.Token) > 0,
-		"token",
-		"token must not be empty",
-	)
+	v := input.Validate()
 	if !v.Valid() {
 		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return

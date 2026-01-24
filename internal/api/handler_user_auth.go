@@ -7,7 +7,6 @@ import (
 
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
-	"github.com/kapilpokhrel/scrolljar/internal/validator"
 )
 
 func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
@@ -18,18 +17,7 @@ func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := validator.New()
-	v.Check(
-		validator.Matches(string(input.Email), validator.EmailReg),
-		"email",
-		"must be a valid email address",
-	)
-	v.Check(
-		len(input.Password) >= 8 && len(input.Password) <= 72,
-		"password",
-		"password must be atleast 8 characters long atmost 72 characters long",
-	)
-
+	v := input.Validate()
 	if !v.Valid() {
 		app.validationErrorResponse(w, r, spec.ValidationError(*v))
 		return
