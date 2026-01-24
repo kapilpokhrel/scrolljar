@@ -91,11 +91,6 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 		return
 	}
 
-	if !scroll.Uploaded {
-		app.notFoundResponse(w, r)
-		return
-	}
-
 	jar := database.ScrollJar{}
 	jar.ID = scroll.JarID
 

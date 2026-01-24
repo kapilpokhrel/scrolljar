@@ -152,7 +152,7 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 		SELECT s.id, s.jar_id, s.title, s.format, s.uploaded, s.created_at, s.updated_at
 		FROM scroll s
 		JOIN scrolljar j ON j.id = s.jar_id
-		WHERE s.jar_id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
+		WHERE s.jar_id = $1 AND s.uploaded = TRUE AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -183,7 +183,7 @@ func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 		SELECT COUNT(*) 
 		FROM scroll s
 		JOIN scrolljar j ON j.id = s.jar_id
-		WHERE s.jar_id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
+		WHERE s.jar_id = $1 AND s.uploaded = TRUE AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 	var count int
 
@@ -202,7 +202,7 @@ func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 		SELECT s.jar_id, s.title, s.format, s.uploaded, s.created_at, s.updated_at
 		FROM scroll s
 		JOIN scrolljar j ON j.id = j.jar_id
-		WHERE s.id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
+		WHERE s.id = $1 AND s.uploaded = TRUE AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
