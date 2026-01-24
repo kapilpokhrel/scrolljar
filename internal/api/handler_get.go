@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -20,11 +19,6 @@ func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.J
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
-		return
-	}
-
-	if jar.ExpiresAt.Time.Before(time.Now()) {
-		app.notFoundResponse(w, r)
 		return
 	}
 
@@ -60,11 +54,6 @@ func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
-		return
-	}
-
-	if jar.ExpiresAt.Time.Before(time.Now()) {
-		app.notFoundResponse(w, r)
 		return
 	}
 
@@ -113,11 +102,6 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	err = app.models.ScrollJar.Get(&jar)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
-		return
-	}
-
-	if jar.ExpiresAt.Time.Before(time.Now()) {
-		app.notFoundResponse(w, r)
 		return
 	}
 

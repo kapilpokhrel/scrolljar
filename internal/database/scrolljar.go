@@ -19,7 +19,6 @@ type Scroll struct {
 	spec.Scroll
 	Uploaded  bool
 	UpdatedAt pgtype.Timestamptz `json:"-"`
-	Jar       *ScrollJar         `json:"-"`
 }
 
 type ScrollJar struct {
@@ -81,7 +80,7 @@ func (m ScrollJarModel) InsertScroll(scroll *Scroll) error {
 			return err
 		}
 
-		args := []any{slug, scroll.Jar.ID, scroll.Title, scroll.Format}
+		args := []any{slug, scroll.JarID, scroll.Title, scroll.Format}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -104,7 +103,7 @@ func (m ScrollJarModel) Get(jar *ScrollJar) error {
 	query := `
 		SELECT name, user_id, access, password_hash, tags, expires_at, created_at, updated_at
 		FROM scrolljar
-		WHERE id = $1
+		WHERE id = $1 AND (expires_at IS NULL OR expires_at > now());
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -123,7 +122,7 @@ func (m ScrollJarModel) GetAllByUserID(userID int64) ([]*ScrollJar, error) {
 	query := `
 		SELECT id, name, access, password_hash, tags, expires_at, created_at, updated_at
 		FROM scrolljar
-		WHERE user_id = $1
+		WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > now());
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -150,9 +149,10 @@ func (m ScrollJarModel) GetAllByUserID(userID int64) ([]*ScrollJar, error) {
 
 func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	query := `
-		SELECT id, jar_id, title, format, uploaded, created_at, updated_at
-		FROM scroll
-		WHERE jar_id = $1
+		SELECT s.id, s.jar_id, s.title, s.format, s.uploaded, s.created_at, s.updated_at
+		FROM scroll s
+		JOIN scrolljar j ON j.id = s.jar_id
+		WHERE s.jar_id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -173,7 +173,6 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	for rows.Next() {
 		scroll := Scroll{}
 		rows.Scan(&scroll.ID, &scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Uploaded, &scroll.CreatedAt, &scroll.UpdatedAt)
-		scroll.Jar = jar
 		scrolls = append(scrolls, &scroll)
 	}
 	return scrolls, nil
@@ -181,9 +180,10 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 
 func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 	query := `
-		SELECT COUNT(*)
-		FROM scroll
-		WHERE jar_id = $1
+		SELECT COUNT(*) 
+		FROM scroll s
+		JOIN scrolljar j ON j.id = s.jar_id
+		WHERE s.jar_id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 	var count int
 
@@ -199,9 +199,10 @@ func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
-		SELECT jar_id, title, format, uploaded, created_at, updated_at
-		FROM scroll
-		WHERE id = $1
+		SELECT s.jar_id, s.title, s.format, s.uploaded, s.created_at, s.updated_at
+		FROM scroll s
+		JOIN scrolljar j ON j.id = j.jar_id
+		WHERE s.id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

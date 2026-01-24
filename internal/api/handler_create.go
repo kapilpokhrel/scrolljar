@@ -74,7 +74,6 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	for _, inputScroll := range input.Scrolls {
 		scroll := database.Scroll{}
 		scroll.JarID = jar.ID
-		scroll.Jar = jar
 		scroll.Title = inputScroll.Title
 		scroll.Format = inputScroll.Format
 		err = app.models.ScrollJar.InsertScroll(&scroll)
@@ -113,25 +112,6 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	jar := database.ScrollJar{}
-	jar.ID = id
-
-	err = app.models.ScrollJar.Get(&jar)
-	if err != nil {
-		switch {
-		case errors.Is(err, database.ErrNoRecord):
-			app.notFoundResponse(w, r)
-		default:
-			app.serverErrorResponse(w, r, err)
-		}
-		return
-	}
-
-	if jar.ExpiresAt.Time.Before(time.Now()) {
-		app.notFoundResponse(w, r)
-		return
-	}
-
 	if !app.verifyJarCreator(id, w, r) {
 		app.invalidCredentialsResponse(w, r)
 		return
@@ -141,8 +121,8 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		Scroll: spec.Scroll{
 			Title:  input.Title,
 			Format: input.Format,
+			JarID:  id,
 		},
-		Jar: &jar,
 	}
 
 	err = app.models.ScrollJar.InsertScroll(&scroll)
