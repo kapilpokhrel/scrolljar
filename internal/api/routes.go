@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -43,6 +42,8 @@ func NewRouteIPLimiter(factory RateLimiterFactory) routeIPLimiter {
 		{"DELETE", regexp.MustCompile(`^/jar/[^/]+$`), "Medium", nil},
 		{"GET", regexp.MustCompile(`^/jar/[^/]+/scrolls$`), "General", nil},
 
+		{"PUT", regexp.MustCompile(`^/upload$`), "Medium", nil},
+
 		{"GET", regexp.MustCompile(`^/scroll/[^/]+$`), "General", nil},
 		{"POST", regexp.MustCompile(`^/scroll/[^/]+$`), "Medium", nil},
 		{"PATCH", regexp.MustCompile(`^/scroll/[^/]+$`), "Medium", nil},
@@ -81,6 +82,8 @@ func (app *Application) ipLimitPolicyMiddleware(next http.Handler) http.Handler 
 		limiter := app.ipLimiter.Get(r.Method, path)
 		if limiter != nil {
 			limiter(next).ServeHTTP(w, r)
+		} else {
+			(next).ServeHTTP(w, r)
 		}
 	})
 }
@@ -98,31 +101,15 @@ func (app *Application) requireAuthIfContextFlag(next http.Handler) http.Handler
 	})
 }
 
-func debugMiddleware(name string) spec.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return next
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Println("ENTER", name)
-			next.ServeHTTP(w, r)
-			log.Println("EXIT ", name)
-		})
-	}
-}
-
 func (app *Application) GetRouter() http.Handler {
 	router := http.NewServeMux()
 	router.Handle("GET /swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec.SpecFile)))
 
 	middlewares := []spec.MiddlewareFunc{
-		debugMiddleware("require_auth"),
 		app.requireAuthIfContextFlag,
-		debugMiddleware("auth"),
 		app.authenticateUser,
-		debugMiddleware("ip"),
 		app.ipLimitPolicyMiddleware,
-		debugMiddleware("rate"),
 		app.globalRateLimiter,
-		debugMiddleware("recover"),
 		app.recoverPanic,
 	}
 

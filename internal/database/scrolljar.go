@@ -17,7 +17,7 @@ const Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 type Scroll struct {
 	spec.Scroll
-	S3URL     string             `json:"-"`
+	Uploaded  bool
 	UpdatedAt pgtype.Timestamptz `json:"-"`
 	Jar       *ScrollJar         `json:"-"`
 }
@@ -150,7 +150,7 @@ func (m ScrollJarModel) GetAllByUserID(userID int64) ([]*ScrollJar, error) {
 
 func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	query := `
-		SELECT id, jar_id, title, format, created_at, updated_at
+		SELECT id, jar_id, title, format, uploaded, created_at, updated_at
 		FROM scroll
 		WHERE jar_id = $1
 	`
@@ -172,7 +172,7 @@ func (m ScrollJarModel) GetAllScrolls(jar *ScrollJar) ([]*Scroll, error) {
 	scrolls := make([]*Scroll, 0, 255)
 	for rows.Next() {
 		scroll := Scroll{}
-		rows.Scan(&scroll.ID, &scroll.JarID, &scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
+		rows.Scan(&scroll.ID, &scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Uploaded, &scroll.CreatedAt, &scroll.UpdatedAt)
 		scroll.Jar = jar
 		scrolls = append(scrolls, &scroll)
 	}
@@ -199,14 +199,14 @@ func (m ScrollJarModel) GetScrollCount(jar *ScrollJar) (int, error) {
 
 func (m ScrollJarModel) GetScroll(scroll *Scroll) error {
 	query := `
-		SELECT jar_id, title, format, created_at, updated_at
+		SELECT jar_id, title, format, uploaded, created_at, updated_at
 		FROM scroll
 		WHERE id = $1
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.CreatedAt, &scroll.UpdatedAt)
+	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Uploaded, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ErrNoRecord
@@ -219,7 +219,7 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 	query := `
 		UPDATE scroll
 		SET title = $1, format = $2
-		WHERE id = $4 AND updated_at = $5
+		WHERE id = $3 AND updated_at = $4
 		RETURNING updated_at
 	`
 
@@ -230,6 +230,30 @@ func (m ScrollJarModel) UpdateScroll(scroll *Scroll) error {
 		ctx,
 		query,
 		scroll.Title, scroll.Format,
+		scroll.ID, scroll.UpdatedAt.Time,
+	).Scan(&scroll.UpdatedAt)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return ErrEditConflict
+	default:
+		return err
+	}
+}
+
+func (m ScrollJarModel) SetScrollUpload(scroll *Scroll) error {
+	query := `
+		UPDATE scroll
+		SET uploaded = TRUE
+		WHERE id = $1 AND updated_at = $2
+		RETURNING updated_at
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DBPool.QueryRow(
+		ctx,
+		query,
 		scroll.ID, scroll.UpdatedAt.Time,
 	).Scan(&scroll.UpdatedAt)
 	switch {

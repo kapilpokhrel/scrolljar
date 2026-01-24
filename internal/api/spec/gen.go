@@ -135,6 +135,12 @@ type ScrollCreationType struct {
 	Title  string `json:"title,omitempty"`
 }
 
+// ScrollFetch defines model for ScrollFetch.
+type ScrollFetch struct {
+	FetchURL string `json:"fetch_url,omitempty"`
+	Scroll   Scroll `json:"scroll,omitempty"`
+}
+
 // ScrollPatch defines model for ScrollPatch.
 type ScrollPatch struct {
 	Format *string `json:"format,omitempty"`
@@ -183,8 +189,8 @@ type RateLimitExceeded = Error
 // ScrollCollectionResponse defines model for ScrollCollectionResponse.
 type ScrollCollectionResponse = ScrollCollection
 
-// ScrollResponse defines model for ScrollResponse.
-type ScrollResponse = Scroll
+// ScrollFetchResponse defines model for ScrollFetchResponse.
+type ScrollFetchResponse = ScrollFetch
 
 // SuccessfulMessageResponse defines model for SuccessfulMessageResponse.
 type SuccessfulMessageResponse = Message
@@ -214,6 +220,12 @@ type GetJarParams struct {
 type GetScrollParams struct {
 	// XPastePassword Optional password for password protected jar
 	XPastePassword string `json:"X-Paste-Password,omitempty"`
+}
+
+// UploadScrollParams defines parameters for UploadScroll.
+type UploadScrollParams struct {
+	// XUploadToken Upload token to upload the content
+	XUploadToken string `json:"X-Upload-Token"`
 }
 
 // CreateJarJSONRequestBody defines body for CreateJar for application/json ContentType.
@@ -269,6 +281,9 @@ type ServerInterface interface {
 	// Route to get a activation token of a user
 	// (POST /token/activation)
 	CreateActivationToken(w http.ResponseWriter, r *http.Request)
+	// Route to upload the scroll content
+	// (PUT /upload)
+	UploadScroll(w http.ResponseWriter, r *http.Request, params UploadScrollParams)
 	// Route to get information about the user and the jars created by them
 	// (GET /user)
 	GetUser(w http.ResponseWriter, r *http.Request)
@@ -584,6 +599,50 @@ func (siw *ServerInterfaceWrapper) CreateActivationToken(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// UploadScroll operation middleware
+func (siw *ServerInterfaceWrapper) UploadScroll(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UploadScrollParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Upload-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Upload-Token")]; found {
+		var XUploadToken string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Upload-Token", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Upload-Token", valueList[0], &XUploadToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Upload-Token", Err: err})
+			return
+		}
+
+		params.XUploadToken = XUploadToken
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Upload-Token is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Upload-Token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadScroll(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetUser operation middleware
 func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
 
@@ -796,6 +855,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("PATCH "+options.BaseURL+"/scroll/{id}", wrapper.PatchScroll)
 	m.HandleFunc("POST "+options.BaseURL+"/scroll/{id}", wrapper.CreateScroll)
 	m.HandleFunc("POST "+options.BaseURL+"/token/activation", wrapper.CreateActivationToken)
+	m.HandleFunc("PUT "+options.BaseURL+"/upload", wrapper.UploadScroll)
 	m.HandleFunc("GET "+options.BaseURL+"/user", wrapper.GetUser)
 	m.HandleFunc("PUT "+options.BaseURL+"/user/activate", wrapper.ActivateUser)
 	m.HandleFunc("POST "+options.BaseURL+"/user/auth", wrapper.AuthUser)

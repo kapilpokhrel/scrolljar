@@ -80,35 +80,45 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 		return
 	}
 
+	if !scroll.Uploaded {
+		app.notFoundResponse(w, r)
+		return
+	}
+
 	jar := database.ScrollJar{}
 	jar.ID = scroll.JarID
 
 	err = app.models.ScrollJar.Get(&jar)
 	if err != nil {
-		switch {
-		case errors.Is(err, database.ErrNoRecord):
-		default:
-			app.serverErrorResponse(w, r, err)
-		}
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
 	if jar.Access == spec.AccessPrivate {
 		passwordHeader := params.XPastePassword
 		if passwordHeader == "" {
-			app.invalidCredentialsResponse(w, r)
+			app.invalidJarPassword(w, r)
 			return
 		}
 
 		if !verifyHashPassword(passwordHeader, *jar.PasswordHash) {
-			app.invalidCredentialsResponse(w, r)
+			app.invalidJarPassword(w, r)
 			return
 		}
 	}
 
 	app.getScrollURI(&scroll)
+	fetchURL, err := app.getScrollFetchURL(&scroll)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 
-	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
+	err = app.writeJSON(
+		w,
+		http.StatusOK,
+		spec.ScrollFetch{Scroll: scroll.Scroll, FetchURL: fetchURL},
+		nil,
+	)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

@@ -19,7 +19,7 @@ FOREIGN KEY (user_id) REFERENCES users(id);
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS users CASCADE;
 
 ALTER TABLE scrolljar 
 DROP CONSTRAINT scrolljar_user_id_fkey;

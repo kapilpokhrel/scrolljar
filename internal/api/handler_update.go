@@ -54,7 +54,16 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 		return
 	}
 	app.getScrollURI(&scroll)
-	err = app.writeJSON(w, http.StatusOK, scroll.Scroll, nil)
+
+	user := app.contextGetUser(r)
+	uploadToken, err := createScrollUploadToken(&scroll, user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+	err = app.writeJSON(w, http.StatusOK, spec.ScrollCreationResponse{
+		Scroll:      scroll.Scroll,
+		UploadToken: uploadToken,
+	}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

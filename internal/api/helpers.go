@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
@@ -9,8 +10,12 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"path/filepath"
 	"time"
+	"unicode/utf8"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -136,10 +141,16 @@ func (app *Application) verifyJarCreator(jarID string, w http.ResponseWriter, r 
 
 var secretKey = []byte("<SECRET_KEY>")
 
-func createScrollRWToken(scrollID string) (string, error) {
+func createScrollUploadToken(scroll *database.Scroll, user *database.User) (string, error) {
+	var userID int64 = -1
+	if user != nil && user.Activated {
+		userID = user.ID
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
-			"scrollID": scrollID,
+			"scrollID": scroll.ID,
+			"jarID":    scroll.JarID,
+			"userID":   userID,
 			"exp":      time.Now().Add(time.Minute * 5).Unix(),
 		})
 
@@ -151,19 +162,53 @@ func createScrollRWToken(scrollID string) (string, error) {
 	return tokenString, nil
 }
 
-func verifyScrollRWToken(tokenString string) (string, error) {
+func verifyScrollUploadToken(tokenString string) (string, string, int64, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		return secretKey, nil
 	})
 	if err != nil {
-		return "", err
+		return "", "", -1, err
 	}
 
 	if !token.Valid {
-		return "", fmt.Errorf("invalid token")
+		return "", "", -1, fmt.Errorf("invalid token")
 	}
 
 	mapClaim := (token.Claims).(jwt.MapClaims)
 
-	return mapClaim["scrollID"].(string), nil
+	return mapClaim["scrollID"].(string), mapClaim["jarID"].(string), int64(mapClaim["userID"].(float64)), nil
+}
+
+func (app *Application) getScrollFetchURL(scroll *database.Scroll) (string, error) {
+	jarID := scroll.JarID
+	scrollID := scroll.ID
+
+	key := filepath.Join(jarID, scrollID)
+	presignClient := s3.NewPresignClient(app.s3Client)
+
+	fetchURL, err := presignClient.PresignGetObject(
+		context.TODO(),
+		&s3.GetObjectInput{
+			Bucket: aws.String(app.config.S3.BucketName),
+			Key:    aws.String(key),
+		},
+		s3.WithPresignExpires(time.Minute*3),
+	)
+	return fetchURL.URL, err
+}
+
+var utf8Err = errors.New("invalid UTF-8")
+
+type utf8ValidationReader struct {
+	r io.Reader
+}
+
+func (u utf8ValidationReader) Read(p []byte) (int, error) {
+	n, err := u.r.Read(p)
+	if n > 0 {
+		if !utf8.Valid(p[:n]) {
+			return 0, utf8Err
+		}
+	}
+	return n, err
 }

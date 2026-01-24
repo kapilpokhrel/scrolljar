@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/mailer"
@@ -43,12 +45,14 @@ type Config struct {
 		Password string
 		Sender   string
 	}
-
 	Rate struct {
 		GlobalRps float64
 		GlobalBps int
 		IPRps     float64
 		IPBps     int
+	}
+	S3 struct {
+		BucketName string
 	}
 }
 
@@ -61,6 +65,7 @@ type Application struct {
 	wg        sync.WaitGroup
 	startTime time.Time
 	ipLimiter routeIPLimiter
+	s3Client  *s3.Client
 }
 
 func parseFlags() Config {
@@ -84,6 +89,8 @@ func parseFlags() Config {
 	flag.IntVar(&cfg.Rate.GlobalBps, "global-burst", 250, "Global limit burst (per second)")
 	flag.Float64Var(&cfg.Rate.IPRps, "ip-rate-limit", 10.0, "IP rate limit (per second)")
 	flag.IntVar(&cfg.Rate.IPBps, "ip-burst", 15, "IP limit burst (per second)")
+
+	flag.StringVar(&cfg.S3.BucketName, "s3-bucket", os.Getenv("S3_BUCKET"), "s3 bucket")
 	flag.Parse()
 
 	return cfg
@@ -111,6 +118,14 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// S3 client
+	awsCfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	s3Client := s3.NewFromConfig(awsCfg)
+
 	app := &Application{
 		config:    cfg,
 		dbPool:    dbPool,
@@ -118,6 +133,7 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 		models:    database.NewModels(dbPool),
 		mailer:    mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
 		startTime: time.Now(),
+		s3Client:  s3Client,
 	}
 	app.ipLimiter = NewRouteIPLimiter(app.ipRateLimiter)
 	return app, nil
@@ -128,7 +144,7 @@ func (app *Application) Serve() error {
 		Addr:         fmt.Sprintf(":%d", app.config.Port),
 		Handler:      app.GetRouter(),
 		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  5 * time.Minute,
 		WriteTimeout: 10 * time.Second,
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}

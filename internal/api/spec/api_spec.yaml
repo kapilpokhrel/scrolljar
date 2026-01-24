@@ -130,6 +130,7 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
       security:
         - BearerAuth: []
+    
     get:
       tags: [Scroll]
       summary: Route to get a scroll information
@@ -144,7 +145,7 @@ paths:
           description: Optional password for password protected jar
       responses:
         '200':
-          $ref: '#/components/responses/ScrollResponse'
+          $ref: '#/components/responses/ScrollFetchResponse'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
@@ -180,7 +181,7 @@ paths:
         $ref: '#/components/requestBodies/ScrollPatch'
       responses:
         '200':
-          $ref: '#/components/responses/ScrollResponse'
+          $ref: '#/components/responses/ScrollCreationResponse'
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '401':
@@ -191,6 +192,28 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
       security:
         - BearerAuth: []
+
+  /upload:
+    put:
+      tags: [Scroll]
+      summary: Route to upload the scroll content
+      operationId: uploadScroll
+      parameters:
+        - name: X-Upload-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Upload token to upload the content 
+      responses:
+        '200':
+          $ref: '#/components/responses/ScrollFetchResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
 
   /user:
     get:
@@ -406,6 +429,13 @@ components:
           schema:
             $ref: '#/components/schemas/Scroll'
     
+    ScrollFetchResponse:
+      description: Operation Successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScrollFetch'
+    
     JarResponse:
       description: Operation Successful
       content:
@@ -600,6 +630,15 @@ components:
         uri:
           type: string
           format: uri
+    
+    ScrollFetch:
+      type: object
+      additionalProperties: false
+      properties:
+        scroll:
+          $ref: '#/components/schemas/Scroll'
+        fetch_url:
+          type: string
 
     ScrollCollection:
       type: array 

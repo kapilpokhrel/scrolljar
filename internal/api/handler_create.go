@@ -1,10 +1,15 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgtype"
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -87,7 +92,10 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		}
 
 		app.getScrollURI(&scroll)
-		uploadToken, _ := createScrollRWToken(scroll.ID)
+		uploadToken, err := createScrollUploadToken(&scroll, user)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+		}
 		createdScrolls = append(createdScrolls, spec.ScrollCreationResponse{
 			Scroll:      scroll.Scroll,
 			UploadToken: uploadToken,
@@ -145,11 +153,92 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	app.getScrollURI(&scroll)
-	uploadToken, _ := createScrollRWToken(scroll.ID)
+
+	user := app.contextGetUser(r)
+	uploadToken, err := createScrollUploadToken(&scroll, user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 	err = app.writeJSON(w, http.StatusOK, spec.ScrollCreationResponse{
 		Scroll:      scroll.Scroll,
 		UploadToken: uploadToken,
 	}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, params spec.UploadScrollParams) {
+	token := params.XUploadToken
+	scrollID, jarID, userID, err := verifyScrollUploadToken(token)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	scroll := database.Scroll{}
+	scroll.ID = scrollID
+	app.models.ScrollJar.GetScroll(&scroll)
+	if scroll.Uploaded {
+		app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "already uploaded"})
+		return
+
+	}
+
+	var maxSize int64 = 1 * 1024 * 1024 // For anon user
+	if userID >= 0 {
+		maxSize = 10 * 1024 * 1024 // 10 MB
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxSize+1)
+
+	key := filepath.Join(jarID, scrollID)
+	reader := utf8ValidationReader{r: r.Body}
+
+	uploader := manager.NewUploader(app.s3Client)
+
+	_, err = uploader.Upload(context.Background(), &s3.PutObjectInput{
+		Bucket:      aws.String(app.config.S3.BucketName),
+		Key:         aws.String(key),
+		Body:        reader,
+		ContentType: aws.String("text/plain"),
+	})
+	if err != nil {
+		if errors.Is(err, utf8Err) {
+			app.badRequestResponse(w, r, errors.New("invalid text content"))
+			return
+		}
+		if errors.Is(err, http.ErrBodyReadAfterClose) {
+			app.entityTooLarge(w, r)
+			http.Error(w, "upload too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.models.ScrollJar.SetScrollUpload(&scroll)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrEditConflict):
+			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit confict"})
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	app.getScrollURI(&scroll)
+	fetchURL, err := app.getScrollFetchURL(&scroll)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+	err = app.writeJSON(
+		w,
+		http.StatusOK,
+		spec.ScrollFetch{Scroll: scroll.Scroll, FetchURL: fetchURL},
+		nil,
+	)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

@@ -4,8 +4,8 @@ CREATE TABLE scrolljar (
     id CHAR(8) PRIMARY KEY,
     name TEXT,
     user_id BIGINT,
-    access smallint NOT NULL DEFAULT 0,
-    password_hash text,
+    access SMALLINT NOT NULL DEFAULT 0,
+    password_hash TEXT,
     tags TEXT[],
     expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -17,7 +17,7 @@ CREATE TABLE scroll (
     jar_id CHAR(8) NOT NULL REFERENCES scrolljar(id) ON DELETE CASCADE,
     title TEXT,
     format TEXT,
-    s3_url TEXT,
+    uploaded BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

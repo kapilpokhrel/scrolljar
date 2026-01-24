@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"runtime/debug"
 
@@ -45,9 +44,9 @@ func (app *Application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 	app.errorResponse(w, r, http.StatusBadRequest, spec.Error{Error: err.Error()})
 }
 
-func (app *Application) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
-	error := spec.Error{Error: fmt.Sprintf("the %s method is not supported", r.Method)}
-	app.errorResponse(w, r, http.StatusMethodNotAllowed, error)
+func (app *Application) entityTooLarge(w http.ResponseWriter, r *http.Request) {
+	error := spec.Error{Error: "entity too large"}
+	app.errorResponse(w, r, http.StatusRequestEntityTooLarge, error)
 }
 
 func (app *Application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
@@ -55,8 +54,13 @@ func (app *Application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	app.errorResponse(w, r, http.StatusNotFound, error)
 }
 
+func (app *Application) invalidJarPassword(w http.ResponseWriter, r *http.Request) {
+	error := spec.Error{Error: "invalid jar password"}
+	app.errorResponse(w, r, http.StatusUnauthorized, error)
+}
+
 func (app *Application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
-	error := spec.Error{Error: "invalid authentication credentials"}
+	error := spec.Error{Error: "invalid credentials"}
 	app.errorResponse(w, r, http.StatusUnauthorized, error)
 }
 
