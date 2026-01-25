@@ -36,7 +36,7 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /jar:
     post:
@@ -44,16 +44,16 @@ paths:
       summary: Route to create a new Jar
       operationId: createJar
       requestBody:
-        $ref: '#/components/requestBodies/JarCreation'
+        $ref: '#/components/requestBodies/CreateJarInput'
       responses:
         '200':
-          $ref: '#/components/responses/JarCreationResponse'
+          $ref: '#/components/responses/CreateJarOutput'
         '422':
-          $ref: '#/components/responses/ValidationErrorResponse'
+          $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
   /jar/{id}:
     get:
       tags: [Jar]
@@ -69,13 +69,13 @@ paths:
           description: Optional password for password protected jar
       responses:
         '200':
-          $ref: '#/components/responses/JarResponse'
+          $ref: '#/components/responses/Jar'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
     delete:
       tags: [Jar]
@@ -85,13 +85,13 @@ paths:
         - $ref: '#/components/parameters/JarId'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessfulMessageResponse'
+          $ref: '#/components/responses/SuccessfulMessage'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
 
@@ -104,11 +104,11 @@ paths:
         - $ref: '#/components/parameters/JarId'
       responses:
         '200':
-          $ref: '#/components/responses/ScrollCollectionResponse'
+          $ref: '#/components/responses/ScrollCollection'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /scroll/{id}:
     post:
@@ -118,16 +118,16 @@ paths:
       parameters:
         - $ref: '#/components/parameters/JarId'
       requestBody:
-        $ref: '#/components/requestBodies/ScrollCreation'
+        $ref: '#/components/requestBodies/CreateScrollInput'
       responses:
         '200':
-          $ref: '#/components/responses/ScrollCreationResponse'
+          $ref: '#/components/responses/CreateScrollOutput'
         '422':
-          $ref: '#/components/responses/ValidationErrorResponse'
+          $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
     
@@ -145,11 +145,11 @@ paths:
           description: Optional password for password protected jar
       responses:
         '200':
-          $ref: '#/components/responses/ScrollFetchResponse'
+          $ref: '#/components/responses/ScrollFetch'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
     delete:
       tags: [Scroll]
@@ -159,15 +159,15 @@ paths:
         - $ref: '#/components/parameters/ScrollId'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessfulMessageResponse'
+          $ref: '#/components/responses/SuccessfulMessage'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
 
@@ -178,18 +178,18 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ScrollId'
       requestBody:
-        $ref: '#/components/requestBodies/ScrollPatch'
+        $ref: '#/components/requestBodies/ScrollPatchInput'
       responses:
         '200':
-          $ref: '#/components/responses/ScrollCreationResponse'
+          $ref: '#/components/responses/CreateScrollOutput'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
 
@@ -207,13 +207,13 @@ paths:
           description: Upload token to upload the content 
       responses:
         '200':
-          $ref: '#/components/responses/ScrollFetchResponse'
+          $ref: '#/components/responses/ScrollFetch'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /user:
     get:
@@ -222,15 +222,15 @@ paths:
       operationId: getUser
       responses:
         '200':
-          $ref: '#/components/responses/UserResponse'
+          $ref: '#/components/responses/User'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
 
@@ -241,15 +241,15 @@ paths:
       operationId: getUserJars
       responses:
         '200':
-          $ref: '#/components/responses/JarCollectionResponse'
+          $ref: '#/components/responses/JarCollection'
         '404':
-          $ref: '#/components/responses/NotFoundResponse'
+          $ref: '#/components/responses/NotFound'
         '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
       security:
         - BearerAuth: []
 
@@ -259,14 +259,14 @@ paths:
       summary: Route to create a new User
       operationId: createUser
       requestBody:
-        $ref: '#/components/requestBodies/Registration'
+        $ref: '#/components/requestBodies/RegistrationInput'
       responses:
         '200':
-          $ref: '#/components/responses/UserResponse'
+          $ref: '#/components/responses/User'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /user/activate:
     put:
@@ -274,14 +274,14 @@ paths:
       summary: Route to activate a new User
       operationId: activateUser
       requestBody:
-        $ref: '#/components/requestBodies/Activate'
+        $ref: '#/components/requestBodies/ActivationInput'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessfulMessageResponse'
+          $ref: '#/components/responses/SuccessfulMessage'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /user/auth:
     post:
@@ -289,7 +289,7 @@ paths:
       summary: Route to authenticate and get an access token
       operationId: authUser
       requestBody:
-        $ref: '#/components/requestBodies/Auth'
+        $ref: '#/components/requestBodies/LoginInput'
       responses:
         '200':
           description: successful operation
@@ -300,7 +300,7 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
   /token/activation:
     post:
@@ -308,7 +308,7 @@ paths:
       summary: Route to get a activation token of a user
       operationId: createActivationToken
       requestBody:
-        $ref: '#/components/requestBodies/Auth'
+        $ref: '#/components/requestBodies/LoginInput'
       responses:
         '200':
           description: successful operation
@@ -319,7 +319,7 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         default:
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
 components:
   securitySchemes:
@@ -343,41 +343,41 @@ components:
         type: string
 
   requestBodies:
-    JarCreation:
+    CreateJarInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/JarCreationType'
+            $ref: '#/components/schemas/CreateJarInput'
 
-    ScrollCreation:
+    CreateScrollInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ScrollCreationType'
+            $ref: '#/components/schemas/CreateScrollInput'
     
-    ScrollPatch:
+    ScrollPatchInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ScrollPatch'
+            $ref: '#/components/schemas/ScrollPatchInput'
 
-    Registration:
+    RegistrationInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Registration'
+            $ref: '#/components/schemas/RegistrationInput'
 
-    Activate:
+    ActivationInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Activate'
+            $ref: '#/components/schemas/ActivationInput'
 
-    Auth:
+    LoginInput:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Auth'
+            $ref: '#/components/schemas/LoginInput'
 
   responses:
     RateLimitExceeded:
@@ -387,91 +387,91 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
 
-    NotFoundResponse:
+    NotFound:
       description: Item not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 
-    ErrorResponse:
+    Error:
       description: Unexpected error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 
-    UnauthorizedResponse:
+    Unauthorized:
       description: Unauthorized user
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 
-    ValidationErrorResponse:
+    ValidationError:
       description: Validation Error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ValidationError'
 
-    SuccessfulMessageResponse:
+    SuccessfulMessage:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Message'
 
-    ScrollResponse:
+    Scroll:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Scroll'
     
-    ScrollFetchResponse:
+    ScrollFetch:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ScrollFetch'
     
-    JarResponse:
+    Jar:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Jar'
     
-    JarCreationResponse:
+    CreateJarOutput:
       description: Operation Successful
       content:
         application/json: 
           schema:
-            $ref: '#/components/schemas/JarCreationResponse'
+            $ref: '#/components/schemas/CreateJarOutput'
       
-    ScrollCreationResponse:
+    CreateScrollOutput:
       description: Operation Successful
       content:
         application/json: 
           schema:
-            $ref: '#/components/schemas/ScrollCreationResponse'
+            $ref: '#/components/schemas/CreateScrollOutput'
 
-    UserResponse:
+    User:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/User'
     
-    JarCollectionResponse:
+    JarCollection:
       description: Operation Successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/JarCollection'
     
-    ScrollCollectionResponse:
+    ScrollCollection:
       description: Operation Successful
       content:
         application/json:
@@ -581,7 +581,7 @@ components:
           type: string
           format: uri
       
-    JarCreationResponse:
+    CreateJarOutput:
       type: object
       additionalProperties: false
       required: [jar, scrolls]
@@ -591,9 +591,9 @@ components:
         scrolls:
           type: array
           items:
-            $ref: "#/components/schemas/ScrollCreationResponse"
+            $ref: "#/components/schemas/CreateScrollOutput"
     
-    ScrollCreationResponse:
+    CreateScrollOutput:
       type: object
       additionalProperties: false
       required: [upload_token, expiry]
@@ -670,7 +670,7 @@ components:
           type: string
           format: date-time
 
-    JarCreationType:
+    CreateJarInput:
       type: object
       additionalProperties: false
       required: [name, scrolls]
@@ -694,15 +694,9 @@ components:
           minItems: 1
           maxItems: 254
           items:
-            $ref: '#/components/schemas/ScrollCreationType'
-      if:
-        properties:
-          access:
-            const: 1
-      then:
-        required: [password]
+            $ref: '#/components/schemas/CreateScrollInput'
 
-    ScrollCreationType:
+    CreateScrollInput:
       type: object
       additionalProperties: false
       properties:
@@ -711,7 +705,7 @@ components:
         format:
           type: string
     
-    ScrollPatch:
+    ScrollPatchInput:
       type: object
       additionalProperties: false
       properties:
@@ -722,7 +716,7 @@ components:
           type: string
           x-go-type-skip-optional-pointer: false
 
-    Registration:
+    RegistrationInput:
       type: object
       additionalProperties: false
       required: [username, email, password]
@@ -739,7 +733,7 @@ components:
           minLength: 8
           maxLength: 72
 
-    Activate:
+    ActivationInput:
       type: object
       additionalProperties: false
       required: [token]
@@ -748,7 +742,7 @@ components:
           type: string
           minLength: 1
 
-    Auth:
+    LoginInput:
       type: object
       additionalProperties: false
       required: [email, password]
@@ -760,3 +754,4 @@ components:
           type: string
           minLength: 8
           maxLength: 72
+

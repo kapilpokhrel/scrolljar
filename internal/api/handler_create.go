@@ -17,7 +17,7 @@ import (
 
 var DurYear time.Duration = time.Hour * 25 * 365
 
-func insertJarFromInputType(app *Application, input spec.JarCreation, user *database.User) (*database.ScrollJar, error) {
+func insertJarFromInputType(app *Application, input spec.CreateJarInput, user *database.User) (*database.ScrollJar, error) {
 	jar := &database.ScrollJar{}
 	jar.Name = input.Name
 	jar.Access = input.Access
@@ -55,7 +55,7 @@ func insertJarFromInputType(app *Application, input spec.JarCreation, user *data
 	return jar, nil
 }
 
-func insertScrollFromInputType(app *Application, input spec.ScrollCreation, jarID string, user *database.User) (*database.Scroll, string, error) {
+func insertScrollFromInputType(app *Application, input spec.CreateScrollInput, jarID string, user *database.User) (*database.Scroll, string, error) {
 	scroll := database.Scroll{
 		Scroll: spec.Scroll{
 			Title:  input.Title,
@@ -78,7 +78,7 @@ func insertScrollFromInputType(app *Application, input spec.ScrollCreation, jarI
 }
 
 func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
-	input := spec.JarCreation{}
+	input := spec.CreateJarInput{}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -97,7 +97,7 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	createdScrolls := make([]spec.ScrollCreationResponse, 0, len(input.Scrolls))
+	createdScrolls := make([]spec.CreateScrollOutput, 0, len(input.Scrolls))
 	for _, inputScroll := range input.Scrolls {
 		scroll, uploadToken, err := insertScrollFromInputType(app, inputScroll, jar.ID, user)
 		if err != nil {
@@ -107,10 +107,10 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		}
 		createdScrolls = append(
 			createdScrolls,
-			spec.ScrollCreationResponse{Scroll: scroll.Scroll, UploadToken: uploadToken},
+			spec.CreateScrollOutput{Scroll: scroll.Scroll, UploadToken: uploadToken},
 		)
 	}
-	err = app.writeJSON(w, http.StatusOK, spec.JarCreationResponse{
+	err = app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
 		Jar:     jar.Jar,
 		Scrolls: createdScrolls,
 	}, nil)
@@ -120,7 +120,7 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id spec.JarID) {
-	input := spec.ScrollCreationType{}
+	input := spec.CreateScrollInput{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
@@ -142,7 +142,7 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 	err = app.writeJSON(
 		w,
 		http.StatusOK,
-		spec.ScrollCreationResponse{Scroll: scroll.Scroll, UploadToken: uploadToken},
+		spec.CreateScrollOutput{Scroll: scroll.Scroll, UploadToken: uploadToken},
 		nil,
 	)
 	if err != nil {

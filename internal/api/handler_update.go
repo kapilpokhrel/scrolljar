@@ -9,7 +9,7 @@ import (
 )
 
 func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id spec.ScrollID) {
-	input := spec.ScrollPatch{}
+	input := spec.ScrollPatchInput{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
@@ -60,7 +60,7 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-	err = app.writeJSON(w, http.StatusOK, spec.ScrollCreationResponse{
+	err = app.writeJSON(w, http.StatusOK, spec.CreateScrollOutput{
 		Scroll:      scroll.Scroll,
 		UploadToken: uploadToken,
 	}, nil)

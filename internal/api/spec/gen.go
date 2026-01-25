@@ -26,21 +26,43 @@ const (
 	AccessPublic  JarAccess = 0
 )
 
-// Activate defines model for Activate.
-type Activate struct {
+// ActivationInput defines model for ActivationInput.
+type ActivationInput struct {
 	Token string `json:"token"`
-}
-
-// Auth defines model for Auth.
-type Auth struct {
-	Email    openapi_types.Email `json:"email"`
-	Password string              `json:"password"`
 }
 
 // AuthTokens defines model for AuthTokens.
 type AuthTokens struct {
 	Authorization Token `json:"authorization"`
 	Refresh       Token `json:"refresh"`
+}
+
+// CreateJarInput defines model for CreateJarInput.
+type CreateJarInput struct {
+	Access   JarAccess           `json:"access,omitempty"`
+	Expiry   ExpiryDuration      `json:"expiry,omitempty"`
+	Name     string              `json:"name"`
+	Password string              `json:"password,omitempty"`
+	Scrolls  []CreateScrollInput `json:"scrolls"`
+	Tags     []string            `json:"tags,omitempty"`
+}
+
+// CreateJarOutput defines model for CreateJarOutput.
+type CreateJarOutput struct {
+	Jar     Jar                  `json:"jar"`
+	Scrolls []CreateScrollOutput `json:"scrolls"`
+}
+
+// CreateScrollInput defines model for CreateScrollInput.
+type CreateScrollInput struct {
+	Format string `json:"format,omitempty"`
+	Title  string `json:"title,omitempty"`
+}
+
+// CreateScrollOutput defines model for CreateScrollOutput.
+type CreateScrollOutput struct {
+	Scroll      Scroll `json:"scroll,omitempty"`
+	UploadToken string `json:"upload_token"`
 }
 
 // Error defines model for Error.
@@ -74,20 +96,10 @@ type JarAccess int
 // JarCollection defines model for JarCollection.
 type JarCollection = []Jar
 
-// JarCreationResponse defines model for JarCreationResponse.
-type JarCreationResponse struct {
-	Jar     Jar                      `json:"jar"`
-	Scrolls []ScrollCreationResponse `json:"scrolls"`
-}
-
-// JarCreationType defines model for JarCreationType.
-type JarCreationType struct {
-	Access   JarAccess            `json:"access,omitempty"`
-	Expiry   ExpiryDuration       `json:"expiry,omitempty"`
-	Name     string               `json:"name"`
-	Password string               `json:"password,omitempty"`
-	Scrolls  []ScrollCreationType `json:"scrolls"`
-	Tags     []string             `json:"tags,omitempty"`
+// LoginInput defines model for LoginInput.
+type LoginInput struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
 }
 
 // Message defines model for Message.
@@ -103,8 +115,8 @@ type Ping struct {
 	Version     string `json:"version"`
 }
 
-// Registration defines model for Registration.
-type Registration struct {
+// RegistrationInput defines model for RegistrationInput.
+type RegistrationInput struct {
 	Email    openapi_types.Email `json:"email"`
 	Password string              `json:"password"`
 	Username string              `json:"username"`
@@ -123,26 +135,14 @@ type Scroll struct {
 // ScrollCollection defines model for ScrollCollection.
 type ScrollCollection = []Scroll
 
-// ScrollCreationResponse defines model for ScrollCreationResponse.
-type ScrollCreationResponse struct {
-	Scroll      Scroll `json:"scroll,omitempty"`
-	UploadToken string `json:"upload_token"`
-}
-
-// ScrollCreationType defines model for ScrollCreationType.
-type ScrollCreationType struct {
-	Format string `json:"format,omitempty"`
-	Title  string `json:"title,omitempty"`
-}
-
 // ScrollFetch defines model for ScrollFetch.
 type ScrollFetch struct {
 	FetchURL string `json:"fetch_url,omitempty"`
 	Scroll   Scroll `json:"scroll,omitempty"`
 }
 
-// ScrollPatch defines model for ScrollPatch.
-type ScrollPatch struct {
+// ScrollPatchInput defines model for ScrollPatchInput.
+type ScrollPatchInput struct {
 	Format *string `json:"format,omitempty"`
 	Title  *string `json:"title,omitempty"`
 }
@@ -171,44 +171,17 @@ type JarID = string
 // ScrollID defines model for ScrollId.
 type ScrollID = string
 
-// ErrorResponse defines model for ErrorResponse.
-type ErrorResponse = Error
-
-// JarCollectionResponse defines model for JarCollectionResponse.
-type JarCollectionResponse = JarCollection
-
-// JarResponse defines model for JarResponse.
-type JarResponse = Jar
-
-// NotFoundResponse defines model for NotFoundResponse.
-type NotFoundResponse = Error
+// NotFound defines model for NotFound.
+type NotFound = Error
 
 // RateLimitExceeded defines model for RateLimitExceeded.
 type RateLimitExceeded = Error
 
-// ScrollCollectionResponse defines model for ScrollCollectionResponse.
-type ScrollCollectionResponse = ScrollCollection
+// SuccessfulMessage defines model for SuccessfulMessage.
+type SuccessfulMessage = Message
 
-// ScrollFetchResponse defines model for ScrollFetchResponse.
-type ScrollFetchResponse = ScrollFetch
-
-// SuccessfulMessageResponse defines model for SuccessfulMessageResponse.
-type SuccessfulMessageResponse = Message
-
-// UnauthorizedResponse defines model for UnauthorizedResponse.
-type UnauthorizedResponse = Error
-
-// UserResponse defines model for UserResponse.
-type UserResponse = User
-
-// ValidationErrorResponse defines model for ValidationErrorResponse.
-type ValidationErrorResponse = ValidationError
-
-// JarCreation defines model for JarCreation.
-type JarCreation = JarCreationType
-
-// ScrollCreation defines model for ScrollCreation.
-type ScrollCreation = ScrollCreationType
+// Unauthorized defines model for Unauthorized.
+type Unauthorized = Error
 
 // GetJarParams defines parameters for GetJar.
 type GetJarParams struct {
@@ -229,25 +202,25 @@ type UploadScrollParams struct {
 }
 
 // CreateJarJSONRequestBody defines body for CreateJar for application/json ContentType.
-type CreateJarJSONRequestBody = JarCreationType
+type CreateJarJSONRequestBody = CreateJarInput
 
 // PatchScrollJSONRequestBody defines body for PatchScroll for application/json ContentType.
-type PatchScrollJSONRequestBody = ScrollPatch
+type PatchScrollJSONRequestBody = ScrollPatchInput
 
 // CreateScrollJSONRequestBody defines body for CreateScroll for application/json ContentType.
-type CreateScrollJSONRequestBody = ScrollCreationType
+type CreateScrollJSONRequestBody = CreateScrollInput
 
 // CreateActivationTokenJSONRequestBody defines body for CreateActivationToken for application/json ContentType.
-type CreateActivationTokenJSONRequestBody = Auth
+type CreateActivationTokenJSONRequestBody = LoginInput
 
 // ActivateUserJSONRequestBody defines body for ActivateUser for application/json ContentType.
-type ActivateUserJSONRequestBody = Activate
+type ActivateUserJSONRequestBody = ActivationInput
 
 // AuthUserJSONRequestBody defines body for AuthUser for application/json ContentType.
-type AuthUserJSONRequestBody = Auth
+type AuthUserJSONRequestBody = LoginInput
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = Registration
+type CreateUserJSONRequestBody = RegistrationInput
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -312,6 +285,7 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 // CreateJar operation middleware
 func (siw *ServerInterfaceWrapper) CreateJar(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateJar(w, r)
 	}))
@@ -325,6 +299,7 @@ func (siw *ServerInterfaceWrapper) CreateJar(w http.ResponseWriter, r *http.Requ
 
 // DeleteJar operation middleware
 func (siw *ServerInterfaceWrapper) DeleteJar(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -355,6 +330,7 @@ func (siw *ServerInterfaceWrapper) DeleteJar(w http.ResponseWriter, r *http.Requ
 
 // GetJar operation middleware
 func (siw *ServerInterfaceWrapper) GetJar(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -403,6 +379,7 @@ func (siw *ServerInterfaceWrapper) GetJar(w http.ResponseWriter, r *http.Request
 
 // GetJarScrolls operation middleware
 func (siw *ServerInterfaceWrapper) GetJarScrolls(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -427,6 +404,7 @@ func (siw *ServerInterfaceWrapper) GetJarScrolls(w http.ResponseWriter, r *http.
 
 // Ping operation middleware
 func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Ping(w, r)
 	}))
@@ -440,6 +418,7 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 
 // DeleteScroll operation middleware
 func (siw *ServerInterfaceWrapper) DeleteScroll(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -470,6 +449,7 @@ func (siw *ServerInterfaceWrapper) DeleteScroll(w http.ResponseWriter, r *http.R
 
 // GetScroll operation middleware
 func (siw *ServerInterfaceWrapper) GetScroll(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -518,6 +498,7 @@ func (siw *ServerInterfaceWrapper) GetScroll(w http.ResponseWriter, r *http.Requ
 
 // PatchScroll operation middleware
 func (siw *ServerInterfaceWrapper) PatchScroll(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -548,6 +529,7 @@ func (siw *ServerInterfaceWrapper) PatchScroll(w http.ResponseWriter, r *http.Re
 
 // CreateScroll operation middleware
 func (siw *ServerInterfaceWrapper) CreateScroll(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "id" -------------
@@ -578,6 +560,7 @@ func (siw *ServerInterfaceWrapper) CreateScroll(w http.ResponseWriter, r *http.R
 
 // CreateActivationToken operation middleware
 func (siw *ServerInterfaceWrapper) CreateActivationToken(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateActivationToken(w, r)
 	}))
@@ -591,6 +574,7 @@ func (siw *ServerInterfaceWrapper) CreateActivationToken(w http.ResponseWriter, 
 
 // UploadScroll operation middleware
 func (siw *ServerInterfaceWrapper) UploadScroll(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
@@ -634,6 +618,7 @@ func (siw *ServerInterfaceWrapper) UploadScroll(w http.ResponseWriter, r *http.R
 
 // GetUser operation middleware
 func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
@@ -653,6 +638,7 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 
 // ActivateUser operation middleware
 func (siw *ServerInterfaceWrapper) ActivateUser(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ActivateUser(w, r)
 	}))
@@ -666,6 +652,7 @@ func (siw *ServerInterfaceWrapper) ActivateUser(w http.ResponseWriter, r *http.R
 
 // AuthUser operation middleware
 func (siw *ServerInterfaceWrapper) AuthUser(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthUser(w, r)
 	}))
@@ -679,6 +666,7 @@ func (siw *ServerInterfaceWrapper) AuthUser(w http.ResponseWriter, r *http.Reque
 
 // GetUserJars operation middleware
 func (siw *ServerInterfaceWrapper) GetUserJars(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
@@ -698,6 +686,7 @@ func (siw *ServerInterfaceWrapper) GetUserJars(w http.ResponseWriter, r *http.Re
 
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateUser(w, r)
 	}))

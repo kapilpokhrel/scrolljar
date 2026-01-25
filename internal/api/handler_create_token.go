@@ -10,7 +10,7 @@ import (
 )
 
 func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Request) {
-	input := spec.Auth{}
+	input := spec.LoginInput{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {

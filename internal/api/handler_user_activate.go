@@ -11,7 +11,7 @@ import (
 )
 
 func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
-	input := spec.Activate{}
+	input := spec.ActivationInput{}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)

@@ -25,7 +25,7 @@ func (d *ExpiryDuration) UnmarshalJSON(jsonValue []byte) error {
 	return nil
 }
 
-func (input JarCreationType) Validate(unlimitedExpiry bool) *Validator {
+func (input CreateJarInput) Validate(unlimitedExpiry bool) *Validator {
 	v := NewValidator()
 	v.Check(input.Expiry.Duration == nil || time.Duration(*input.Expiry.Duration) > time.Minute*5, "expiry", "expiry period must be greater than or equal to 5 minutes")
 	v.Check(input.Access <= AccessPrivate, "access", "access type can be one of 0, 1")
@@ -40,7 +40,7 @@ func (input JarCreationType) Validate(unlimitedExpiry bool) *Validator {
 	return v
 }
 
-func (input Auth) Validate() *Validator {
+func (input LoginInput) Validate() *Validator {
 	v := NewValidator()
 	v.Check(
 		Matches(string(input.Email), EmailReg),
@@ -55,7 +55,7 @@ func (input Auth) Validate() *Validator {
 	return v
 }
 
-func (input Activate) Validate() *Validator {
+func (input ActivationInput) Validate() *Validator {
 	v := NewValidator()
 	v.Check(
 		len(input.Token) > 0,
@@ -65,7 +65,7 @@ func (input Activate) Validate() *Validator {
 	return v
 }
 
-func (input Registration) Validate() *Validator {
+func (input RegistrationInput) Validate() *Validator {
 	v := NewValidator()
 	v.Check(
 		len(input.Username) > 0 && len(input.Username) <= 512,

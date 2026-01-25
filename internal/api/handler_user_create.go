@@ -10,7 +10,7 @@ import (
 )
 
 func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
-	input := spec.Registration{}
+	input := spec.RegistrationInput{}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
