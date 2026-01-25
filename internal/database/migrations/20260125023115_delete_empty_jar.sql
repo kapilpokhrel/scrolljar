@@ -24,29 +24,10 @@ CREATE TRIGGER delete_empty_scrolljar_trigger
 AFTER DELETE ON scroll
 FOR EACH ROW
 EXECUTE FUNCTION delete_empty_scrolljar();
-
-
-CREATE OR REPLACE FUNCTION delete_expired_scrolljar()
-RETURNS TRIGGER AS $$
-BEGIN
-  DELETE FROM scrolljar WHERE expires_at IS NOT NULL AND expires_at <= NOW();
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER delete_expired_scrolljar_trigger
-BEFORE INSERT OR UPDATE ON scroll
-FOR EACH STATEMENT
-EXECUTE FUNCTION delete_expired_scrolljar();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TRIGGER IF EXISTS delete_empty_scrolljar_trigger ON scroll;
-DROP TRIGGER IF EXISTS delete_expired_scrolljar_trigger ON scroll;
--- +goose StatementEnd
-
--- +goose StatementBegin
 DROP FUNCTION IF EXISTS delete_empty_scrolljar();
-DROP FUNCTION IF EXISTS delete_expired_scrolljar();
 -- +goose StatementEnd

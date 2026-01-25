@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE OR REPLACE FUNCTION set_timestamp()
+CREATE OR REPLACE FUNCTION set_update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -8,17 +8,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_scrolljar_timestamp_updated_at
+CREATE TRIGGER set_user_updated_at
+BEFORE UPDATE ON user_account 
+FOR EACH ROW
+EXECUTE PROCEDURE set_update_timestamp();
+
+CREATE TRIGGER set_scrolljar_updated_at
 BEFORE UPDATE ON scrolljar 
 FOR EACH ROW
-EXECUTE PROCEDURE set_timestamp();
+EXECUTE PROCEDURE set_update_timestamp();
 
-CREATE TRIGGER set_scroll_timestamp_updated_at
+CREATE TRIGGER set_scroll_updated_at
 BEFORE UPDATE ON scroll
 FOR EACH ROW
-EXECUTE PROCEDURE set_timestamp();
+EXECUTE PROCEDURE set_update_timestamp();
+-- +goose StatementEnd
 
-
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION ping_parent()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -50,8 +56,9 @@ EXECUTE FUNCTION ping_parent('scrolljar', 'jar_id');
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TRIGGER IF EXISTS set_scrolljar_timestamp_updated_at ON scrolljar;
-DROP TRIGGER IF EXISTS set_scroll_timestamp_updated_at ON scroll;
+DROP TRIGGER IF EXISTS set_user_updated_at ON user_account;
+DROP TRIGGER IF EXISTS set_scrolljar_updated_at ON scrolljar;
+DROP TRIGGER IF EXISTS set_scroll_updated_at ON scroll;
 DROP TRIGGER IF EXISTS ping_scrolljar_on_scrollchange_trigger ON scroll;
 -- +goose StatementEnd
 

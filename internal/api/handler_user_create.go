@@ -66,9 +66,10 @@ func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 	app.backgroundTask(func() {
 		for i := 1; i <= 3; i++ {
 			err = app.mailer.Send(user.Email, "user_verify.html", userData)
-			if err != nil {
-				app.logError(r, err)
+			if err == nil {
+				return
 			}
+			app.logError(r, err)
 		}
 	}, "Registration Mail")
 	app.writeJSON(w, http.StatusOK, user.User, nil)

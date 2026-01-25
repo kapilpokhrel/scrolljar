@@ -1,5 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
+ALTER TABLE user_account ADD CONSTRAINT user_creation_not_in_future CHECK(created_at <= now());
+ALTER TABLE user_account ADD CONSTRAINT user_modified_not_in_future CHECK(updated_at <= now());
+
 ALTER TABLE scrolljar ADD CONSTRAINT jar_creation_not_in_future CHECK(created_at <= now());
 ALTER TABLE scrolljar ADD CONSTRAINT jar_modified_not_in_future CHECK(updated_at <= now());
 ALTER TABLE scrolljar ADD CONSTRAINT min_expiry_check CHECK(
@@ -16,6 +19,9 @@ ALTER TABLE scroll ADD CONSTRAINT scroll_modified_not_in_future CHECK(updated_at
 
 -- +goose Down
 -- +goose StatementBegin
+ALTER TABLE user_account DROP CONSTRAINT IF EXISTS user_creation_not_in_future;
+ALTER TABLE user_account DROP CONSTRAINT IF EXISTS user_modified_not_in_future;
+
 ALTER TABLE scrolljar DROP CONSTRAINT IF EXISTS jar_creation_not_in_future;
 ALTER TABLE scrolljar DROP CONSTRAINT IF EXISTS jar_modified_not_in_future;
 ALTER TABLE scrolljar DROP CONSTRAINT IF EXISTS min_expiry_check;

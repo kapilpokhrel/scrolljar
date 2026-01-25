@@ -52,7 +52,7 @@ func (m TokenModel) GetTokenByHash(token *Token) error {
 	query := `
 		SELECT user_id, scope, expires_at 
 		FROM token 
-		WHERE token_hash = $1
+		WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now())
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
