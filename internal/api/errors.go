@@ -36,7 +36,8 @@ func (app *Application) validationErrorResponse(w http.ResponseWriter, r *http.R
 func (app *Application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logError(r, err)
 	app.logger.Error(string(debug.Stack()))
-	app.errorResponse(w, r, http.StatusInternalServerError, spec.Error{Error: err.Error()})
+	error := spec.Error{Error: "internal server error"}
+	app.errorResponse(w, r, http.StatusInternalServerError, error)
 }
 
 func (app *Application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {

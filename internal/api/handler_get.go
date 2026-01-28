@@ -11,7 +11,7 @@ import (
 func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.JarID, params spec.GetJarParams) {
 	jar := database.ScrollJar{}
 	jar.ID = id
-	err := app.models.ScrollJar.Get(&jar)
+	err := app.models.ScrollJar.Get(r.Context(), &jar)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -36,8 +36,7 @@ func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.J
 	}
 
 	app.getJarURI(&jar)
-	err = app.writeJSON(w, http.StatusOK, jar.Jar, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, jar.Jar, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -46,7 +45,7 @@ func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id
 	jar := database.ScrollJar{}
 	jar.ID = id
 
-	err := app.models.ScrollJar.Get(&jar)
+	err := app.models.ScrollJar.Get(r.Context(), &jar)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -57,7 +56,7 @@ func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 
-	scrolls, err := app.models.ScrollJar.GetAllScrolls(&jar)
+	scrolls, err := app.models.ScrollJar.GetAllScrolls(r.Context(), &jar)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -70,8 +69,7 @@ func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id
 	for i, scroll := range scrolls {
 		outputScrolls[i] = scroll.Scroll
 	}
-	err = app.writeJSON(w, http.StatusOK, outputScrolls, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, outputScrolls, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -80,7 +78,7 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err := app.models.ScrollJar.GetScroll(&scroll)
+	err := app.models.ScrollJar.GetScroll(r.Context(), &scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -94,7 +92,7 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	jar := database.ScrollJar{}
 	jar.ID = scroll.JarID
 
-	err = app.models.ScrollJar.Get(&jar)
+	err = app.models.ScrollJar.Get(r.Context(), &jar)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -119,13 +117,12 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 		app.serverErrorResponse(w, r, err)
 	}
 
-	err = app.writeJSON(
+	if err := app.writeJSON(
 		w,
 		http.StatusOK,
 		spec.ScrollFetch{Scroll: scroll.Scroll, FetchURL: fetchURL},
 		nil,
-	)
-	if err != nil {
+	); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

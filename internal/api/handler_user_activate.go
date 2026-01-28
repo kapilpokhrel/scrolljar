@@ -30,7 +30,7 @@ func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 		TokenHash: tokenHash[:],
 	}
 
-	err = app.models.Token.GetTokenByHash(token)
+	err = app.models.Token.GetTokenByHash(r.Context(), token)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -44,20 +44,30 @@ func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 
 	user := &database.User{}
 	user.ID = token.UserID
-	err = app.models.Users.GetByID(user)
-	if err != nil {
+	if err := app.models.Users.GetByID(r.Context(), user); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	user.Activated = true
-	err = app.models.Users.Update(user)
+
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	defer tx.Rollback(r.Context())
 
-	err = app.models.Token.DeleteByHash(token)
-	if err != nil {
+	if err := app.models.Users.UpdateTx(r.Context(), tx, user); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.models.Token.DeleteByHashTx(r.Context(), tx, token); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -66,5 +76,7 @@ func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 		Message: fmt.Sprintf("%s (%s) activated", user.Username, user.Email),
 	}
 
-	app.writeJSON(w, http.StatusOK, payload, nil)
+	if err := app.writeJSON(w, http.StatusOK, payload, nil); err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }

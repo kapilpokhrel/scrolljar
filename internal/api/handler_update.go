@@ -20,7 +20,7 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err = app.models.ScrollJar.GetScroll(&scroll)
+	err = app.models.ScrollJar.GetScroll(r.Context(), &scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -43,7 +43,14 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 		scroll.Format = *input.Format
 	}
 
-	err = app.models.ScrollJar.UpdateScroll(&scroll)
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	err = app.models.ScrollJar.UpdateScrollTx(r.Context(), tx, &scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
@@ -60,11 +67,16 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-	err = app.writeJSON(w, http.StatusOK, spec.CreateScrollOutput{
+
+	if err := tx.Commit(r.Context()); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, spec.CreateScrollOutput{
 		Scroll:      scroll.Scroll,
 		UploadToken: uploadToken,
-	}, nil)
-	if err != nil {
+	}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

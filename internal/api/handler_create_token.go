@@ -28,7 +28,7 @@ func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Req
 		Email: string(input.Email),
 	}
 
-	err = app.models.Users.GetUserByEmail(user)
+	err = app.models.Users.GetUserByEmail(r.Context(), user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -50,9 +50,9 @@ func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Req
 
 	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
-	err = app.models.Token.Insert(token)
+	err = app.models.Token.Insert(r.Context(), token)
 	if err != nil {
-		// TODO
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 

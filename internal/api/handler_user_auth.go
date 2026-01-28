@@ -11,8 +11,7 @@ import (
 
 func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
 	input := spec.LoginInput{}
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -26,8 +25,7 @@ func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
 	user := &database.User{}
 	user.Email = string(input.Email)
 
-	err = app.models.Users.GetUserByEmail(user)
-	if err != nil {
+	if err := app.models.Users.GetUserByEmail(r.Context(), user); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -49,14 +47,25 @@ func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
 	authTokenText, authToken := generateToken(user.ID, database.ScopeAuthorization, time.Hour*24)
 	refreshTokenText, refreshToken := generateToken(user.ID, database.ScopeRefresh, time.Hour*24*30) // 30 days
 
-	err = app.models.Token.Insert(authToken)
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
 	if err != nil {
-		// TODO
+		app.serverErrorResponse(w, r, err)
 		return
 	}
-	err = app.models.Token.Insert(refreshToken)
+	defer tx.Rollback(r.Context())
+
+	if err = app.models.Token.InsertTx(r.Context(), tx, authToken); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.models.Token.InsertTx(r.Context(), tx, refreshToken)
 	if err != nil {
-		// TODO
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 

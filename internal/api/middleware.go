@@ -128,7 +128,7 @@ func (app *Application) authenticateUser(next http.Handler) http.Handler {
 			TokenHash: tokenHash[:],
 		}
 
-		err := app.models.Token.GetTokenByHash(token)
+		err := app.models.Token.GetTokenByHash(r.Context(), token)
 		if err != nil {
 			switch {
 			case errors.Is(err, database.ErrNoRecord):
@@ -143,7 +143,7 @@ func (app *Application) authenticateUser(next http.Handler) http.Handler {
 		user := &database.User{}
 		user.ID = token.UserID
 
-		err = app.models.Users.GetByID(user)
+		err = app.models.Users.GetByID(r.Context(), user)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
 			return

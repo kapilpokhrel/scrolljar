@@ -17,7 +17,7 @@ func (app *Application) DeleteJar(w http.ResponseWriter, r *http.Request, id spe
 		return
 	}
 
-	err := app.models.ScrollJar.Delete(&jar)
+	err := app.models.ScrollJar.Delete(r.Context(), &jar)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -26,8 +26,7 @@ func (app *Application) DeleteJar(w http.ResponseWriter, r *http.Request, id spe
 	payload := spec.Message{
 		Message: "scrolljar deleted sucessfully",
 	}
-	err = app.writeJSON(w, http.StatusOK, payload, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, payload, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -36,7 +35,7 @@ func (app *Application) DeleteScroll(w http.ResponseWriter, r *http.Request, id 
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err := app.models.ScrollJar.GetScroll(&scroll)
+	err := app.models.ScrollJar.GetScroll(r.Context(), &scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
@@ -52,7 +51,7 @@ func (app *Application) DeleteScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	err = app.models.ScrollJar.DeleteScroll(&scroll)
+	err = app.models.ScrollJar.DeleteScroll(r.Context(), &scroll)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -61,8 +60,7 @@ func (app *Application) DeleteScroll(w http.ResponseWriter, r *http.Request, id 
 	payload := spec.Message{
 		Message: "scroll deleted sucessfully",
 	}
-	err = app.writeJSON(w, http.StatusOK, payload, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, payload, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

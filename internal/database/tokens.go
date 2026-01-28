@@ -4,10 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Token struct {
@@ -24,10 +23,10 @@ const (
 )
 
 type TokenModel struct {
-	DBPool *pgxpool.Pool
+	BaseModel
 }
 
-func (m TokenModel) Insert(token *Token) error {
+func (m TokenModel) insert(ctx context.Context, q Queryer, token *Token) error {
 	// DO UPDATE will be useful later when there will be a endpoint for token regeneration
 
 	query := `
@@ -40,24 +39,31 @@ func (m TokenModel) Insert(token *Token) error {
 	`
 
 	args := []any{token.TokenHash, token.UserID, token.ExpiresAt.Time, token.Scope}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err := m.DBPool.Exec(ctx, query, args...)
+	_, err := q.Exec(ctx, query, args...)
 	return err
 }
 
-func (m TokenModel) GetTokenByHash(token *Token) error {
+func (m TokenModel) Insert(
+	ctx context.Context,
+	token *Token,
+) error {
+	return m.insert(ctx, m.DBPool, token)
+}
+
+func (m TokenModel) InsertTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	token *Token,
+) error {
+	return m.insert(ctx, tx, token)
+}
+
+func (m TokenModel) GetTokenByHash(ctx context.Context, token *Token) error {
 	query := `
 		SELECT user_id, scope, expires_at 
 		FROM token 
 		WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now())
 	`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	err := m.DBPool.QueryRow(ctx, query, token.TokenHash).Scan(
 		&token.UserID,
 		&token.Scope,
@@ -71,16 +77,12 @@ func (m TokenModel) GetTokenByHash(token *Token) error {
 	}
 }
 
-func (m TokenModel) DeleteByHash(token *Token) error {
+func (m TokenModel) deleteByHash(ctx context.Context, q Queryer, token *Token) error {
 	query := `
 		DELETE FROM token 
 		WHERE token_hash = $1
 	`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	result, err := m.DBPool.Exec(ctx, query, token.TokenHash)
+	result, err := q.Exec(ctx, query, token.TokenHash)
 	switch {
 	case result.RowsAffected() == 0:
 		return ErrNoRecord
@@ -89,20 +91,46 @@ func (m TokenModel) DeleteByHash(token *Token) error {
 	}
 }
 
-func (m TokenModel) DeleteAllByUser(token *Token) error {
+func (m TokenModel) DeleteByHash(
+	ctx context.Context,
+	token *Token,
+) error {
+	return m.deleteByHash(ctx, m.DBPool, token)
+}
+
+func (m TokenModel) DeleteByHashTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	token *Token,
+) error {
+	return m.deleteByHash(ctx, tx, token)
+}
+
+func (m TokenModel) deleteAllByUser(ctx context.Context, q Queryer, token *Token) error {
 	query := `
 		DELETE FROM token 
 		WHERE user_id = $1
 	`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	result, err := m.DBPool.Exec(ctx, query, token.UserID)
+	result, err := q.Exec(ctx, query, token.UserID)
 	switch {
 	case result.RowsAffected() == 0:
 		return ErrNoRecord
 	default:
 		return err
 	}
+}
+
+func (m TokenModel) DeleteAllByUser(
+	ctx context.Context,
+	token *Token,
+) error {
+	return m.deleteAllByUser(ctx, m.DBPool, token)
+}
+
+func (m TokenModel) DeleteAllByUserTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	token *Token,
+) error {
+	return m.deleteAllByUser(ctx, tx, token)
 }

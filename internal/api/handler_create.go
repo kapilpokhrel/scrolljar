@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -17,7 +18,7 @@ import (
 
 var DurYear time.Duration = time.Hour * 25 * 365
 
-func insertJarFromInputType(app *Application, input spec.CreateJarInput, user *database.User) (*database.ScrollJar, error) {
+func insertJarFromInputType(ctx context.Context, tx pgx.Tx, app *Application, input spec.CreateJarInput, user *database.User) (*database.ScrollJar, error) {
 	jar := &database.ScrollJar{}
 	jar.Name = input.Name
 	jar.Access = input.Access
@@ -47,7 +48,7 @@ func insertJarFromInputType(app *Application, input spec.CreateJarInput, user *d
 		jar.UserID = &userID
 	}
 
-	err := app.models.ScrollJar.Insert(jar)
+	err := app.models.ScrollJar.InsertTx(ctx, tx, jar)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,7 @@ func insertJarFromInputType(app *Application, input spec.CreateJarInput, user *d
 	return jar, nil
 }
 
-func insertScrollFromInputType(app *Application, input spec.CreateScrollInput, jarID string, user *database.User) (*database.Scroll, string, error) {
+func insertScrollFromInputType(ctx context.Context, tx pgx.Tx, app *Application, input spec.CreateScrollInput, jarID string, user *database.User) (*database.Scroll, string, error) {
 	scroll := database.Scroll{
 		Scroll: spec.Scroll{
 			Title:  input.Title,
@@ -64,7 +65,7 @@ func insertScrollFromInputType(app *Application, input spec.CreateScrollInput, j
 		},
 	}
 
-	err := app.models.ScrollJar.InsertScroll(&scroll)
+	err := app.models.ScrollJar.InsertScrollTx(ctx, tx, &scroll)
 	if err != nil {
 		return nil, "", err
 	}
@@ -92,23 +93,35 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jar, err := insertJarFromInputType(app, input, user)
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	defer tx.Rollback(r.Context())
+
+	jar, err := insertJarFromInputType(r.Context(), tx, app, input, user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	createdScrolls := make([]spec.CreateScrollOutput, 0, len(input.Scrolls))
 	for _, inputScroll := range input.Scrolls {
-		scroll, uploadToken, err := insertScrollFromInputType(app, inputScroll, jar.ID, user)
+		scroll, uploadToken, err := insertScrollFromInputType(r.Context(), tx, app, inputScroll, jar.ID, user)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
-			// TODO: NEED TO DO THE CLEANUP
 			return
 		}
 		createdScrolls = append(
 			createdScrolls,
 			spec.CreateScrollOutput{Scroll: scroll.Scroll, UploadToken: uploadToken},
 		)
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 	err = app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
 		Jar:     jar.Jar,
@@ -117,6 +130,7 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+
 }
 
 func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id spec.JarID) {
@@ -134,19 +148,32 @@ func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id 
 	}
 
 	user := app.contextGetUser(r)
-	scroll, uploadToken, err := insertScrollFromInputType(app, input, id, user)
+
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	err = app.writeJSON(
+	defer tx.Rollback(r.Context())
+
+	scroll, uploadToken, err := insertScrollFromInputType(r.Context(), tx, app, input, id, user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	if err := app.writeJSON(
 		w,
 		http.StatusOK,
 		spec.CreateScrollOutput{Scroll: scroll.Scroll, UploadToken: uploadToken},
 		nil,
-	)
-	if err != nil {
+	); err != nil {
 		app.serverErrorResponse(w, r, err)
+		return
 	}
 }
 
@@ -160,7 +187,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 
 	scroll := database.Scroll{}
 	scroll.ID = scrollID
-	app.models.ScrollJar.GetScroll(&scroll)
+	app.models.ScrollJar.GetScroll(r.Context(), &scroll)
 	if scroll.Uploaded {
 		app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "already uploaded"})
 		return
@@ -198,7 +225,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = app.models.ScrollJar.SetScrollUpload(&scroll)
+	err = app.models.ScrollJar.SetScrollUpload(r.Context(), &scroll)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
@@ -215,13 +242,12 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 		app.serverErrorResponse(w, r, err)
 	}
 
-	err = app.writeJSON(
+	if err := app.writeJSON(
 		w,
 		http.StatusOK,
 		spec.ScrollFetch{Scroll: scroll.Scroll, FetchURL: fetchURL},
 		nil,
-	)
-	if err != nil {
+	); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

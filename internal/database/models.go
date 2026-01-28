@@ -2,8 +2,11 @@
 package database
 
 import (
+	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,10 +22,23 @@ type Models struct {
 	Token     TokenModel
 }
 
+type BaseModel struct {
+	DBPool *pgxpool.Pool
+}
+
+func (d BaseModel) GetTx(ctx context.Context) (pgx.Tx, error) {
+	return d.DBPool.Begin(ctx)
+}
+
+type Queryer interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
 func NewModels(dbPool *pgxpool.Pool) Models {
 	return Models{
-		ScrollJar: ScrollJarModel{dbPool},
-		Users:     UserModel{dbPool},
-		Token:     TokenModel{dbPool},
+		ScrollJar: ScrollJarModel{BaseModel: BaseModel{DBPool: dbPool}},
+		Users:     UserModel{BaseModel: BaseModel{DBPool: dbPool}},
+		Token:     TokenModel{BaseModel: BaseModel{DBPool: dbPool}},
 	}
 }

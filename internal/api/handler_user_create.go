@@ -34,7 +34,14 @@ func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 	user.Email = string(input.Email)
 	user.PasswordHash = pwHash
 
-	err = app.models.Users.Insert(user)
+	tx, err := app.models.ScrollJar.GetTx(r.Context())
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	err = app.models.Users.InsertTx(r.Context(), tx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUser):
@@ -48,9 +55,14 @@ func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
-	err = app.models.Token.Insert(token)
+	err = app.models.Token.InsertTx(r.Context(), tx, token)
 	if err != nil {
-		// TODO
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 

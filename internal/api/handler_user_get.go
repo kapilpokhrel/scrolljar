@@ -19,7 +19,7 @@ func (app *Application) GetUser(w http.ResponseWriter, r *http.Request) {
 func (app *Application) GetUserJars(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r) // user == nil check happens by requried authenticated user middlware
 
-	jars, err := app.models.ScrollJar.GetAllByUserID(user.ID)
+	jars, err := app.models.ScrollJar.GetAllByUserID(r.Context(), user.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
