@@ -170,8 +170,7 @@ func (app *Application) Serve() error {
 		return err
 	}
 
-	err = <-shutDownError
-	if err != nil {
+	if err := <-shutDownError; err != nil {
 		return err
 	}
 

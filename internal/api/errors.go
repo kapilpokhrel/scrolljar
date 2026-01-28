@@ -18,16 +18,14 @@ func (app *Application) logError(r *http.Request, err error) {
 }
 
 func (app *Application) errorResponse(w http.ResponseWriter, r *http.Request, status int, msg spec.Error) {
-	err := app.writeJSON(w, status, msg, nil)
-	if err != nil {
+	if err := app.writeJSON(w, status, msg, nil); err != nil {
 		app.logError(r, err)
 		w.WriteHeader(500)
 	}
 }
 
 func (app *Application) validationErrorResponse(w http.ResponseWriter, r *http.Request, data spec.ValidationError) {
-	err := app.writeJSON(w, http.StatusUnprocessableEntity, data, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusUnprocessableEntity, data, nil); err != nil {
 		app.logError(r, err)
 		w.WriteHeader(500)
 	}

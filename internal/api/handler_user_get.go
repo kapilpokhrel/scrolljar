@@ -10,8 +10,7 @@ import (
 
 func (app *Application) GetUser(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r) // user == nil check happens by requried authenticated user middlware
-	err := app.writeJSON(w, http.StatusOK, user.User, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, user.User, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -37,8 +36,7 @@ func (app *Application) GetUserJars(w http.ResponseWriter, r *http.Request) {
 		outputJars[i] = jar.Jar
 	}
 
-	err = app.writeJSON(w, http.StatusOK, outputJars, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusOK, outputJars, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

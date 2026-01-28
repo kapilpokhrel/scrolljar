@@ -12,8 +12,7 @@ import (
 
 func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 	input := spec.ActivationInput{}
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -30,8 +29,7 @@ func (app *Application) ActivateUser(w http.ResponseWriter, r *http.Request) {
 		TokenHash: tokenHash[:],
 	}
 
-	err = app.models.Token.GetTokenByHash(r.Context(), token)
-	if err != nil {
+	if err := app.models.Token.GetTokenByHash(r.Context(), token); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			v.AddError(spec.FieldError{Field: []string{"token"}, Msg: "token doesn't exist"})

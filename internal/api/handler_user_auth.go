@@ -58,8 +58,7 @@ func (app *Application) AuthUser(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	err = app.models.Token.InsertTx(r.Context(), tx, refreshToken)
-	if err != nil {
+	if err := app.models.Token.InsertTx(r.Context(), tx, refreshToken); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}

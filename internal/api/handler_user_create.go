@@ -12,8 +12,7 @@ import (
 func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 	input := spec.RegistrationInput{}
 
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -41,8 +40,7 @@ func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	err = app.models.Users.InsertTx(r.Context(), tx, user)
-	if err != nil {
+	if err := app.models.Users.InsertTx(r.Context(), tx, user); err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUser):
 			v.AddError(spec.FieldError{Field: []string{"email"}, Msg: "Duplicate email"})
@@ -55,8 +53,7 @@ func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
-	err = app.models.Token.InsertTx(r.Context(), tx, token)
-	if err != nil {
+	if err := app.models.Token.InsertTx(r.Context(), tx, token); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}

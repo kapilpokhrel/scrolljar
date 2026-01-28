@@ -17,8 +17,7 @@ func (app *Application) DeleteJar(w http.ResponseWriter, r *http.Request, id spe
 		return
 	}
 
-	err := app.models.ScrollJar.Delete(r.Context(), &jar)
-	if err != nil {
+	if err := app.models.ScrollJar.Delete(r.Context(), &jar); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -35,8 +34,7 @@ func (app *Application) DeleteScroll(w http.ResponseWriter, r *http.Request, id 
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err := app.models.ScrollJar.GetScroll(r.Context(), &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.GetScroll(r.Context(), &scroll); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -51,8 +49,7 @@ func (app *Application) DeleteScroll(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	err = app.models.ScrollJar.DeleteScroll(r.Context(), &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.DeleteScroll(r.Context(), &scroll); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}

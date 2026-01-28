@@ -48,8 +48,7 @@ func insertJarFromInputType(ctx context.Context, tx pgx.Tx, app *Application, in
 		jar.UserID = &userID
 	}
 
-	err := app.models.ScrollJar.InsertTx(ctx, tx, jar)
-	if err != nil {
+	if err := app.models.ScrollJar.InsertTx(ctx, tx, jar); err != nil {
 		return nil, err
 	}
 	app.getJarURI(jar)
@@ -65,8 +64,7 @@ func insertScrollFromInputType(ctx context.Context, tx pgx.Tx, app *Application,
 		},
 	}
 
-	err := app.models.ScrollJar.InsertScrollTx(ctx, tx, &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.InsertScrollTx(ctx, tx, &scroll); err != nil {
 		return nil, "", err
 	}
 	app.getScrollURI(&scroll)
@@ -80,8 +78,7 @@ func insertScrollFromInputType(ctx context.Context, tx pgx.Tx, app *Application,
 
 func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 	input := spec.CreateJarInput{}
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -123,21 +120,18 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	err = app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
+	if err := app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
 		Jar:     jar.Jar,
 		Scrolls: createdScrolls,
-	}, nil)
-	if err != nil {
+	}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-
 }
 
 func (app *Application) CreateScroll(w http.ResponseWriter, r *http.Request, id spec.JarID) {
 	input := spec.CreateScrollInput{}
 
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -225,8 +219,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = app.models.ScrollJar.SetScrollUpload(r.Context(), &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.SetScrollUpload(r.Context(), &scroll); err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
 			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit confict"})

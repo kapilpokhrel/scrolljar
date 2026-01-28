@@ -12,8 +12,7 @@ import (
 func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Request) {
 	input := spec.LoginInput{}
 
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -28,8 +27,7 @@ func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Req
 		Email: string(input.Email),
 	}
 
-	err = app.models.Users.GetUserByEmail(r.Context(), user)
-	if err != nil {
+	if err := app.models.Users.GetUserByEmail(r.Context(), user); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -50,8 +48,7 @@ func (app *Application) CreateActivationToken(w http.ResponseWriter, r *http.Req
 
 	tokenText, token := generateToken(user.ID, database.ScopeActivation, time.Minute*5)
 
-	err = app.models.Token.Insert(r.Context(), token)
-	if err != nil {
+	if err := app.models.Token.Insert(r.Context(), token); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}

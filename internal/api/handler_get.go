@@ -11,8 +11,7 @@ import (
 func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.JarID, params spec.GetJarParams) {
 	jar := database.ScrollJar{}
 	jar.ID = id
-	err := app.models.ScrollJar.Get(r.Context(), &jar)
-	if err != nil {
+	if err := app.models.ScrollJar.Get(r.Context(), &jar); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -45,8 +44,7 @@ func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id
 	jar := database.ScrollJar{}
 	jar.ID = id
 
-	err := app.models.ScrollJar.Get(r.Context(), &jar)
-	if err != nil {
+	if err := app.models.ScrollJar.Get(r.Context(), &jar); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -78,8 +76,7 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err := app.models.ScrollJar.GetScroll(r.Context(), &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.GetScroll(r.Context(), &scroll); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -92,8 +89,7 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	jar := database.ScrollJar{}
 	jar.ID = scroll.JarID
 
-	err = app.models.ScrollJar.Get(r.Context(), &jar)
-	if err != nil {
+	if err := app.models.ScrollJar.Get(r.Context(), &jar); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}

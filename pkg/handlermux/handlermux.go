@@ -32,8 +32,7 @@ func (m *HandlerMux) Enabled(ctx context.Context, level slog.Level) bool {
 func (m *HandlerMux) Handle(ctx context.Context, record slog.Record) error {
 	for _, h := range m.handlers {
 		r := record.Clone()
-		err := h.Handle(ctx, r)
-		if err != nil {
+		if err := h.Handle(ctx, r); err != nil {
 			return err
 		}
 	}

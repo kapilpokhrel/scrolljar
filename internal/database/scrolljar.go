@@ -200,8 +200,7 @@ func (m ScrollJarModel) GetScrollCount(ctx context.Context, jar *ScrollJar) (int
 	`
 	var count int
 
-	err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&count)
-	if err != nil {
+	if err := m.DBPool.QueryRow(ctx, query, jar.ID).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil

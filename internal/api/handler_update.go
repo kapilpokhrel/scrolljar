@@ -11,8 +11,7 @@ import (
 func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id spec.ScrollID) {
 	input := spec.ScrollPatchInput{}
 
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
@@ -20,8 +19,7 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	scroll := database.Scroll{}
 	scroll.ID = id
 
-	err = app.models.ScrollJar.GetScroll(r.Context(), &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.GetScroll(r.Context(), &scroll); err != nil {
 		switch {
 		case errors.Is(err, database.ErrNoRecord):
 			app.notFoundResponse(w, r)
@@ -50,8 +48,7 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 	}
 	defer tx.Rollback(r.Context())
 
-	err = app.models.ScrollJar.UpdateScrollTx(r.Context(), tx, &scroll)
-	if err != nil {
+	if err := app.models.ScrollJar.UpdateScrollTx(r.Context(), tx, &scroll); err != nil {
 		switch {
 		case errors.Is(err, database.ErrEditConflict):
 			app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit confict; please try again"})
