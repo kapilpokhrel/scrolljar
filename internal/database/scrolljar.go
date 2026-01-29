@@ -210,8 +210,8 @@ func (m ScrollJarModel) GetScroll(ctx context.Context, scroll *Scroll) error {
 	query := `
 		SELECT s.jar_id, s.title, s.format, s.uploaded, s.created_at, s.updated_at
 		FROM scroll s
-		JOIN scrolljar j ON j.id = j.jar_id
-		WHERE s.id = $1 AND s.uploaded = TRUE AND (j.expires_at IS NULL OR j.expires_at > now());
+		JOIN scrolljar j ON j.id = s.jar_id
+		WHERE s.id = $1 AND (j.expires_at IS NULL OR j.expires_at > now());
 	`
 	err := m.DBPool.QueryRow(ctx, query, scroll.ID).Scan(&scroll.JarID, &scroll.Title, &scroll.Format, &scroll.Uploaded, &scroll.CreatedAt, &scroll.UpdatedAt)
 	switch {

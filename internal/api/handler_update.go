@@ -28,6 +28,10 @@ func (app *Application) PatchScroll(w http.ResponseWriter, r *http.Request, id s
 		}
 		return
 	}
+	if !scroll.Uploaded {
+		app.notFoundResponse(w, r)
+		return
+	}
 
 	if !app.verifyJarCreator(scroll.JarID, w, r) {
 		app.invalidCredentialsResponse(w, r)

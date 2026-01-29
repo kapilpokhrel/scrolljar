@@ -181,7 +181,16 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 
 	scroll := database.Scroll{}
 	scroll.ID = scrollID
-	app.models.ScrollJar.GetScroll(r.Context(), &scroll)
+	if err := app.models.ScrollJar.GetScroll(r.Context(), &scroll); err != nil {
+		switch {
+		case errors.Is(err, database.ErrNoRecord):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
 	if scroll.Uploaded {
 		app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "already uploaded"})
 		return
