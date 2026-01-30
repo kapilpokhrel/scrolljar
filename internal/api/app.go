@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -55,28 +54,20 @@ type Application struct {
 
 func parseFlags() Config {
 	var cfg Config
-	flag.IntVar(&cfg.Port, "port", 8008, "API server port")
-	flag.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|pord))")
-	flag.StringVar(&cfg.DB.URL, "db_url", os.Getenv("SCROLLJAR_DB_URL"), "PostgreSQL URL")
-	flag.IntVar(&cfg.DB.MaxOpenConns, "db_max-open-conns", 50, "PostgreSQL max open connections")
-	flag.IntVar(&cfg.DB.MinIdleConns, "db_min-idle-conns", 50, "PostgreSQL min idle connections")
-	flag.DurationVar(&cfg.DB.MaxIdleTime, "db_max-idle-time", time.Minute*10, "PostgreSQL max idle time")
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	fs.IntVar(&cfg.Port, "port", 8008, "API server port")
+	fs.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|pord))")
 
-	flag.StringVar(&cfg.SMTP.Host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
+	cfg.DB.RegisterFlags(fs)
+	cfg.SMTP.RegisterFlags(fs)
 
-	smtpPort, _ := strconv.ParseInt(os.Getenv("SMTP_PORT"), 10, 64)
-	flag.IntVar(&cfg.SMTP.Port, "smtp-port", int(smtpPort), "SMTP port")
-	flag.StringVar(&cfg.SMTP.Username, "smt-username", os.Getenv("SMTP_USERNAME"), "SMPT Username")
-	flag.StringVar(&cfg.SMTP.Password, "smt-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
-	flag.StringVar(&cfg.SMTP.Sender, "smtp-sender", os.Getenv("SMTP_SENDER"), "SMTP sender")
+	fs.Float64Var(&cfg.Rate.GlobalRps, "global-rate-limit", 200.0, "Global rate limit (per second)")
+	fs.IntVar(&cfg.Rate.GlobalBps, "global-burst", 250, "Global limit burst (per second)")
+	fs.Float64Var(&cfg.Rate.IPRps, "ip-rate-limit", 10.0, "IP rate limit (per second)")
+	fs.IntVar(&cfg.Rate.IPBps, "ip-burst", 15, "IP limit burst (per second)")
 
-	flag.Float64Var(&cfg.Rate.GlobalRps, "global-rate-limit", 200.0, "Global rate limit (per second)")
-	flag.IntVar(&cfg.Rate.GlobalBps, "global-burst", 250, "Global limit burst (per second)")
-	flag.Float64Var(&cfg.Rate.IPRps, "ip-rate-limit", 10.0, "IP rate limit (per second)")
-	flag.IntVar(&cfg.Rate.IPBps, "ip-burst", 15, "IP limit burst (per second)")
-
-	flag.StringVar(&cfg.S3.BucketName, "s3-bucket", os.Getenv("S3_BUCKET"), "s3 bucket")
-	flag.Parse()
+	fs.StringVar(&cfg.S3.BucketName, "s3-bucket", os.Getenv("S3_BUCKET"), "s3 bucket")
+	fs.Parse(os.Args[1:])
 
 	return cfg
 }

@@ -3,7 +3,10 @@ package mailer
 import (
 	"bytes"
 	"embed"
+	"flag"
 	"html/template"
+	"os"
+	"strconv"
 
 	gomail "gopkg.in/mail.v2"
 )
@@ -22,6 +25,15 @@ type MailerCFG struct {
 	Username string
 	Password string
 	Sender   string
+}
+
+func (cfg *MailerCFG) RegisterFlags(fs *flag.FlagSet) {
+	fs.StringVar(&cfg.Host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
+	smtpPort, _ := strconv.ParseInt(os.Getenv("SMTP_PORT"), 10, 64)
+	fs.IntVar(&cfg.Port, "smtp-port", int(smtpPort), "SMTP port")
+	fs.StringVar(&cfg.Username, "smt-username", os.Getenv("SMTP_USERNAME"), "SMPT Username")
+	fs.StringVar(&cfg.Password, "smt-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
+	fs.StringVar(&cfg.Sender, "smtp-sender", os.Getenv("SMTP_SENDER"), "SMTP sender")
 }
 
 func New(cfg MailerCFG) Mailer {

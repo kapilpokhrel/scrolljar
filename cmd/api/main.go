@@ -6,10 +6,11 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/kapilpokhrel/scrolljar/internal/api"
+	"github.com/kapilpokhrel/scrolljar/internal/logger"
 )
 
 func main() {
-	logger := setupLogger()
+	logger := logger.SetupLogger("scrolljar")
 	if err := godotenv.Load(); err != nil {
 		logger.Error("Error loading .env file")
 	}

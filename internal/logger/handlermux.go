@@ -1,5 +1,4 @@
-// Package handlermux defines the handler for slog to manage multiple handler
-package handlermux
+package logger
 
 import (
 	"context"
@@ -12,7 +11,7 @@ type HandlerMux struct {
 
 var _ = (slog.Handler)((*HandlerMux)(nil))
 
-func New(handlers ...slog.Handler) *HandlerMux {
+func NewHandlerMux(handlers ...slog.Handler) *HandlerMux {
 	return &HandlerMux{handlers: handlers}
 }
 

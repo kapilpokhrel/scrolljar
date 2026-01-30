@@ -4,6 +4,8 @@ package database
 import (
 	"context"
 	"errors"
+	"flag"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -19,9 +21,31 @@ var (
 
 type DBCFG struct {
 	URL          string
-	MaxOpenConns int
-	MinIdleConns int
-	MaxIdleTime  time.Duration
+	MaxOpenConns *int
+	MinIdleConns *int
+	MaxIdleTime  *time.Duration
+}
+
+func (cfg *DBCFG) RegisterFlags(fs *flag.FlagSet) {
+	// Sets Defauts Too
+
+	fs.StringVar(&cfg.URL, "db_url", os.Getenv("SCROLLJAR_DB_URL"), "PostgreSQL URL")
+	cfg.MaxOpenConns = new(int)
+	cfg.MinIdleConns = new(int)
+	cfg.MaxIdleTime = new(time.Duration)
+
+	fs.IntVar(cfg.MaxOpenConns,
+		"db_max-open-conns", 50,
+		"PostgreSQL max open connections",
+	)
+	fs.IntVar(cfg.MinIdleConns,
+		"db_min-idle-conns", 50,
+		"PostgreSQL min idle connections",
+	)
+	fs.DurationVar(cfg.MaxIdleTime,
+		"db_max-idle-time", time.Minute*10,
+		"PostgreSQL max idle time",
+	)
 }
 
 type Models struct {
@@ -48,9 +72,15 @@ func SetupDB(cfg DBCFG) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.MaxConnIdleTime = cfg.MaxIdleTime
-	config.MaxConns = int32(cfg.MaxOpenConns)
-	config.MinIdleConns = int32(cfg.MinIdleConns)
+	if cfg.MaxIdleTime != nil {
+		config.MaxConnIdleTime = *cfg.MaxIdleTime
+	}
+	if cfg.MaxOpenConns != nil {
+		config.MaxConns = int32(*cfg.MaxOpenConns)
+	}
+	if cfg.MinIdleConns != nil {
+		config.MinIdleConns = int32(*cfg.MinIdleConns)
+	}
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, err

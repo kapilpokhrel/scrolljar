@@ -364,3 +364,30 @@ func (m ScrollJarModel) DeleteExpired(ctx context.Context) error {
 		return err
 	}
 }
+
+func (m ScrollJarModel) DoScrollsExists(ctx context.Context, scrollIDs []string) (map[string]bool, error) {
+	exists := make(map[string]bool)
+	if len(scrollIDs) == 0 {
+		return exists, nil
+	}
+	query := `
+		SELECT id from scroll WHERE id = ANY($1) 
+	`
+	rows, err := m.DBPool.Query(ctx, query, scrollIDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return exists, nil
+		default:
+			return nil, err
+		}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		rows.Scan(&id)
+		exists[id] = true
+	}
+	return exists, nil
+}
