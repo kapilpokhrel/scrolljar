@@ -15,8 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
 	"github.com/kapilpokhrel/scrolljar/internal/mailer"
@@ -32,28 +30,15 @@ const (
 type Config struct {
 	Port int
 	Env  Environment
-	DB   struct {
-		URL          string
-		MaxOpenConns int
-		MinIdleConns int
-		MaxIdleTime  time.Duration
-	}
-	SMTP struct {
-		Host     string
-		Port     int
-		Username string
-		Password string
-		Sender   string
-	}
+	DB   database.DBCFG
+	SMTP mailer.MailerCFG
 	Rate struct {
 		GlobalRps float64
 		GlobalBps int
 		IPRps     float64
 		IPBps     int
 	}
-	S3 struct {
-		BucketName string
-	}
+	S3 database.S3CFG
 }
 
 type Application struct {
@@ -65,7 +50,7 @@ type Application struct {
 	wg        sync.WaitGroup
 	startTime time.Time
 	ipLimiter routeIPLimiter
-	s3Client  *s3.Client
+	s3Bucket  *database.S3Bucket
 }
 
 func parseFlags() Config {
@@ -96,44 +81,27 @@ func parseFlags() Config {
 	return cfg
 }
 
-func setupDB(cfg Config) (*pgxpool.Pool, error) {
-	config, err := pgxpool.ParseConfig(cfg.DB.URL)
-	if err != nil {
-		return nil, err
-	}
-	config.MaxConnIdleTime = cfg.DB.MaxIdleTime
-	config.MaxConns = int32(cfg.DB.MaxOpenConns)
-	config.MinIdleConns = int32(cfg.DB.MinIdleConns)
-	pool, err := pgxpool.NewWithConfig(context.Background(), config)
-	if err != nil {
-		return nil, err
-	}
-	return pool, nil
-}
-
 func NewApplication(logger *slog.Logger) (*Application, error) {
 	cfg := parseFlags()
 	logger.Info(fmt.Sprintf("Connecting to database at %s", cfg.DB.URL))
-	dbPool, err := setupDB(cfg)
+	dbPool, err := database.SetupDB(cfg.DB)
 	if err != nil {
 		return nil, err
 	}
 
-	// S3 client
-	awsCfg, err := config.LoadDefaultConfig(context.TODO())
+	s3Bucket, err := database.NewS3Bucket(cfg.S3)
 	if err != nil {
 		return nil, err
 	}
-	s3Client := s3.NewFromConfig(awsCfg)
 
 	app := &Application{
 		config:    cfg,
 		dbPool:    dbPool,
 		logger:    logger,
 		models:    database.NewModels(dbPool),
-		mailer:    mailer.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Sender),
+		mailer:    mailer.New(cfg.SMTP),
 		startTime: time.Now(),
-		s3Client:  s3Client,
+		s3Bucket:  s3Bucket,
 	}
 	app.ipLimiter = NewRouteIPLimiter(app.ipRateLimiter)
 	return app, nil

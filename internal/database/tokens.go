@@ -134,3 +134,17 @@ func (m TokenModel) DeleteAllByUserTx(
 ) error {
 	return m.deleteAllByUser(ctx, tx, token)
 }
+
+func (m TokenModel) DeleteExpired(ctx context.Context) error {
+	query := `
+		DELETE FROM token 
+		WHERE expires_at <= now()
+	`
+	result, err := m.DBPool.Exec(ctx, query)
+	switch {
+	case result.RowsAffected() == 0:
+		return nil
+	default:
+		return err
+	}
+}

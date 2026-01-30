@@ -16,11 +16,19 @@ type Mailer struct {
 	sender string
 }
 
-func New(host string, port int, username, password, sender string) Mailer {
-	dailer := gomail.NewDialer(host, port, username, password)
+type MailerCFG struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	Sender   string
+}
+
+func New(cfg MailerCFG) Mailer {
+	dailer := gomail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	return Mailer{
 		dialer: dailer,
-		sender: sender,
+		sender: cfg.Sender,
 	}
 }
 

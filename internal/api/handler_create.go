@@ -7,9 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
@@ -206,14 +203,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 	key := filepath.Join(jarID, scrollID)
 	reader := utf8ValidationReader{r: r.Body}
 
-	uploader := manager.NewUploader(app.s3Client)
-
-	_, err = uploader.Upload(context.Background(), &s3.PutObjectInput{
-		Bucket:      aws.String(app.config.S3.BucketName),
-		Key:         aws.String(key),
-		Body:        reader,
-		ContentType: aws.String("text/plain"),
-	})
+	_, err = app.s3Bucket.StreamingUpload(reader, key)
 	if err != nil {
 		if errors.Is(err, utf8Err) {
 			app.badRequestResponse(w, r, errors.New("invalid text content"))
@@ -239,7 +229,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 	}
 
 	app.getScrollURI(&scroll)
-	fetchURL, err := app.getScrollFetchURL(&scroll)
+	fetchURL, err := app.s3Bucket.GetScrollFetchURL(&scroll)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

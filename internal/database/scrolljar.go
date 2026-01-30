@@ -350,3 +350,17 @@ func (m ScrollJarModel) DeleteTx(
 ) error {
 	return m.delete(ctx, tx, jar)
 }
+
+func (m ScrollJarModel) DeleteExpired(ctx context.Context) error {
+	query := `
+		DELETE FROM scrolljar
+		WHERE expires_at <= now()
+	`
+	result, err := m.DBPool.Exec(ctx, query)
+	switch {
+	case result.RowsAffected() == 0:
+		return nil
+	default:
+		return err
+	}
+}

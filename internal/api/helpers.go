@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
@@ -10,12 +9,9 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"path/filepath"
 	"time"
 	"unicode/utf8"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kapilpokhrel/scrolljar/internal/database"
@@ -176,24 +172,6 @@ func verifyScrollUploadToken(tokenString string) (string, string, int64, error) 
 	mapClaim := (token.Claims).(jwt.MapClaims)
 
 	return mapClaim["scrollID"].(string), mapClaim["jarID"].(string), int64(mapClaim["userID"].(float64)), nil
-}
-
-func (app *Application) getScrollFetchURL(scroll *database.Scroll) (string, error) {
-	jarID := scroll.JarID
-	scrollID := scroll.ID
-
-	key := filepath.Join(jarID, scrollID)
-	presignClient := s3.NewPresignClient(app.s3Client)
-
-	fetchURL, err := presignClient.PresignGetObject(
-		context.TODO(),
-		&s3.GetObjectInput{
-			Bucket: aws.String(app.config.S3.BucketName),
-			Key:    aws.String(key),
-		},
-		s3.WithPresignExpires(time.Minute*3),
-	)
-	return fetchURL.URL, err
 }
 
 var utf8Err = errors.New("invalid UTF-8")

@@ -112,7 +112,7 @@ func (app *Application) GetScroll(w http.ResponseWriter, r *http.Request, id spe
 	}
 
 	app.getScrollURI(&scroll)
-	fetchURL, err := app.getScrollFetchURL(&scroll)
+	fetchURL, err := app.s3Bucket.GetScrollFetchURL(&scroll)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
