@@ -1,0 +1,89 @@
+title Scrolljar: Read and Write Flows
+autoNumber nested
+
+User [icon: user, color: blue]
+API Layer [icon: server, color: green]
+In Memory Rate Limiter [icon: shield, color: green]
+Postgres DB [icon: database, color: orange]
+S3 Bucket [icon: aws-s3, color: orange]
+Cleaner [icon: clock, color: purple]
+Cronjob [icon: repeat, color: purple]
+
+// --- WRITE FLOW ---
+
+User > API Layer: Create new jar (name, password, expiry, etc.)
+API Layer > In Memory Rate Limiter : Check rate limits [color: green]
+In Memory Rate Limiter > API Layer: Allow or block
+alt [label: rate limited, icon: x] {
+  API Layer > User: Error: Rate limit exceeded
+}
+else [label: allowed, icon: check] {
+  API Layer > API Layer: Generate base62 IDs for jar and scrolls
+  API Layer > Postgres DB: Insert jar and scroll metadata
+  Postgres DB > API Layer: Confirm insert
+  API Layer > API Layer: Create short-lived upload token
+  API Layer > User: Return upload token and IDs
+
+  User > API Layer: Upload scroll content (PUT /upload, token in header)
+  API Layer > In Memory Rate Limiter: Check rate limits [color: green]
+  In Memory Rate Limiter > API Layer: Allow or block
+  alt [label: rate limited, icon: x] {
+    API Layer > User: Error: Rate limit exceeded
+  }
+  else [label: allowed, icon: check] {
+    API Layer > API Layer: Validate upload token
+    // Validation of token happens before streaming
+    par [label: Proxied stream with validation, icon: shuffle] {
+      API Layer > S3 Bucket: Proxy HTTP body through UTF-8 validator and byte counter to S3 (no in-memory storage)
+      alt [label: validation failed, icon: x] {
+        API Layer > User: Error: Invalid upload (UTF-8 or size exceeded, upload canceled)
+      }
+      else [label: validation passed, icon: check] {
+        S3 Bucket > API Layer: Upload result
+        API Layer > User: Upload success or error
+      }
+    }
+  }
+}
+deactivate User
+
+// --- READ FLOW ---
+
+User > API Layer: Get scroll/jar (ID in query)
+API Layer > In Memory Rate Limiter: Check rate limits [color: green]
+In Memory Rate Limiter > API Layer: Allow or block
+alt [label: rate limited, icon: x] {
+  API Layer > User: Error: Rate limit exceeded
+}
+else [label: allowed, icon: check] {
+  API Layer > Postgres DB: Fetch scroll/jar metadata
+  Postgres DB > API Layer: Return metadata
+  alt [label: password protected, icon: lock] {
+    User > API Layer: Provide password (X-Paste-Password header)
+    API Layer > API Layer: Verify password
+    alt [label: password invalid, icon: x] {
+      API Layer > User: Error: Invalid password
+    }
+    else [label: password valid, icon: check] {
+      API Layer > S3 Bucket: Generate presigned fetch URL
+      S3 Bucket > API Layer: Return presigned URL
+      API Layer > User: Return presigned URL for direct S3 read
+    }
+  }
+  else [label: not password protected, icon: unlock] {
+    API Layer > S3 Bucket: Generate presigned fetch URL
+    S3 Bucket > API Layer: Return presigned URL
+    API Layer > User: Return presigned URL for direct S3 read
+  }
+}
+deactivate User
+
+// --- CLEANUP FLOW ---
+
+Cronjob > Cleaner: Trigger cleanup binary
+Cleaner > Postgres DB: Find expired jars/scrolls
+Postgres DB > Cleaner: List of expired items
+Cleaner > S3 Bucket: Remove unused/expired scrolls
+S3 Bucket > Cleaner: Cleanup result
+Cleaner > Postgres DB: Remove metadata for deleted items
+Postgres DB > Cleaner: Confirm deletion
