@@ -11,12 +11,15 @@ This repository contains the API server, storage integration, and cleanup toolin
 * **User**: Authenticated users can manage jars and scrolls.
 * **Anonymous users**: Can create jars without signing in.
 
+## Docs
+
+[Swagger Docs](https://editor.swagger.io/?url=https://raw.githubusercontent.com/kapilpokhrel/scrolljar/refs/heads/main/internal/api/spec/api_spec.yaml)
 
 ## Data Flow
 
 <details>
     <summary>View a Diagram</summary>
-    ![Design Diagram](images/diagram.svg)
+    <img src="./images/diagram.png"/>
 </details>
 
 ### Writing (Create & Upload)
