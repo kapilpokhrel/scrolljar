@@ -100,12 +100,12 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 
 func (app *Application) Serve() error {
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", app.config.Port),
-		Handler:      app.GetRouter(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Minute,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
+		Addr:              fmt.Sprintf(":%d", app.config.Port),
+		Handler:           app.GetRouter(),
+		IdleTimeout:       time.Minute,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      3 * time.Minute, // Large timeout is needed for upload/. We can have more granular control with TimeoutHandler
+		ErrorLog:          slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
 
 	shutDownError := make(chan error)

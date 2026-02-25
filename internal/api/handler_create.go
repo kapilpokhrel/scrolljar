@@ -196,7 +196,7 @@ func (app *Application) UploadScroll(w http.ResponseWriter, r *http.Request, par
 
 	var maxSize int64 = 1 * 1024 * 1024 // For anon user
 	if userID >= 0 {
-		maxSize = 10 * 1024 * 1024 // 10 MB
+		maxSize = 5 * 1024 * 1024 // 5 MB
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize+1)
 

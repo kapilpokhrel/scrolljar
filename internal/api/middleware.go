@@ -27,7 +27,50 @@ func (app *Application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
+/*
+http {
+    # 1. TOTAL SERVER LIMIT (All users combined)
+    # Using a static string "all" as the key makes this apply globally.
+    limit_req_zone "all" zone=server_wide:10m rate=50r/s;
+
+    # 2. PER-ENDPOINT LIMITS (Per IP)
+    # These still use $binary_remote_addr to prevent one IP from hogging the endpoint.
+    limit_req_zone $binary_remote_addr zone=read_limit:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=write_limit:10m rate=5r/s;
+
+    # 3. MAX CONCURRENT CONNECTIONS (Global "User" Capacity)
+    # Limits the total number of active connections the server will handle at once.
+    limit_conn_zone "all_conns" zone=total_conns:10m;
+
+    server {
+        listen 80;
+
+        # Apply the global connection limit to the whole server
+        limit_conn total_conns 1000;
+
+        # READ Endpoint
+        location /api/read {
+            # Checks both the global 50r/s bucket AND the per-IP 10r/s bucket
+            limit_req zone=server_wide burst=20;
+            limit_req zone=read_limit burst=5 nodelay;
+
+            proxy_pass http://backend_read;
+        }
+
+        # WRITE Endpoint
+        location /api/write {
+            # Checks both the global 50r/s bucket AND the per-IP 5r/s bucket
+            limit_req zone=server_wide burst=20;
+            limit_req zone=write_limit burst=2 nodelay;
+
+            proxy_pass http://backend_write;
+        }
+    }
+}
+*/
+
 func (app *Application) globalRateLimiter(next http.Handler) http.Handler {
+	// use nginx rate limiter
 	limiter := rate.NewLimiter(rate.Limit(app.config.Rate.GlobalRps), app.config.Rate.GlobalBps)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +83,8 @@ func (app *Application) globalRateLimiter(next http.Handler) http.Handler {
 }
 
 func (app *Application) ipRateLimiter(limitType string) func(http.Handler) http.Handler {
+	// use nginx per location based rate limit
+
 	var rps float64
 	var bps int
 	switch limitType {
