@@ -28,83 +28,77 @@ func parseFlags() cleanerCfg {
 }
 
 func main() {
-	logger := logger.SetupLogger("clearer")
+	log := logger.SetupLogger("cleaner")
 	if err := godotenv.Load(); err != nil {
-		logger.Error("Error loading .env file")
+		log.Error("Error loading .env file")
 	}
 
 	cfg := parseFlags()
 
-	dbPool, err := database.SetupDB(database.DBCFG{
-		URL: cfg.DBURL,
-	})
+	dbPool, err := database.SetupDB(database.DBCFG{URL: cfg.DBURL})
 	if err != nil {
-		logger.Error(err.Error())
+		log.Error(err.Error())
 		return
 	}
-	dbModels := database.NewModels(dbPool)
+	store := database.NewStore(dbPool)
 
 	s3Bucket, err := database.NewS3Bucket(database.S3CFG{BucketName: cfg.S3BucketName})
 	if err != nil {
-		logger.Error(err.Error())
+		log.Error(err.Error())
 		return
 	}
 
 	const batchSize = 1000
 	var batch []types.ObjectIdentifier
-	var scrolls []string
+	var scrollIDs []string
 
 	ctx := context.Background()
 	it := s3Bucket.NewAvilKeyIterator(ctx)
+
+	flush := func() {
+		if len(batch) == 0 {
+			return
+		}
+		existing, err := store.GetExistingScrollIDs(ctx, scrollIDs)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		existsMap := make(map[string]bool, len(existing))
+		for _, id := range existing {
+			existsMap[id] = true
+		}
+		var toDelete []types.ObjectIdentifier
+		for _, obj := range batch {
+			scrollID := strings.SplitN(*obj.Key, "/", 2)[1]
+			if !existsMap[scrollID] {
+				toDelete = append(toDelete, obj)
+			}
+		}
+		s3Bucket.DeleteBatch(toDelete)
+		batch, scrollIDs = batch[:0], scrollIDs[:0]
+	}
+
 	for {
 		key, ok, err := it.Next(ctx)
 		if err != nil {
-			logger.Error(err.Error())
+			log.Error(err.Error())
 			return
 		}
 		if !ok {
 			break
 		}
 
-		scrolls = append(scrolls, strings.SplitN(key, "/", 1)[1])
+		parts := strings.SplitN(key, "/", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		scrollIDs = append(scrollIDs, parts[1])
 		batch = append(batch, types.ObjectIdentifier{Key: &key})
 
 		if len(batch) == batchSize {
-			existsMap, err := dbModels.ScrollJar.DoScrollsExists(context.Background(), scrolls)
-			if err != nil {
-				logger.Error(err.Error())
-				return
-			}
-
-			var toDelete []types.ObjectIdentifier
-			for _, obj := range batch {
-				scrollID := strings.SplitN(*obj.Key, "/", 1)[1]
-				if !existsMap[scrollID] {
-					toDelete = append(toDelete, obj)
-				}
-			}
-
-			s3Bucket.DeleteBatch(toDelete)
-			batch, scrolls = batch[:0], scrolls[:]
+			flush()
 		}
 	}
-
-	// handle remaining items
-	if len(batch) > 0 {
-		existsMap, err := dbModels.ScrollJar.DoScrollsExists(context.Background(), scrolls)
-		if err != nil {
-			logger.Error(err.Error())
-			return
-		}
-
-		var toDelete []types.ObjectIdentifier
-		for _, obj := range batch {
-			scrollID := strings.SplitN(*obj.Key, "/", 1)[1]
-			if !existsMap[scrollID] {
-				toDelete = append(toDelete, obj)
-			}
-		}
-
-		s3Bucket.DeleteBatch(toDelete)
-	}
+	flush()
 }

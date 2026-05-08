@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/flowchartsman/swaggerui"
-	"github.com/kapilpokhrel/scrolljar/internal/api/spec"
+	"github.com/kapilpokhrel/scrolljar/internal/spec"
 )
 
 func (app *Application) Ping(w http.ResponseWriter, r *http.Request) {

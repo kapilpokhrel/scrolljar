@@ -31,13 +31,9 @@ func NewS3Bucket(cfg S3CFG) (*S3Bucket, error) {
 	return &S3Bucket{cfg: cfg, Client: s3Client}, nil
 }
 
-func (bucket *S3Bucket) GetScrollFetchURL(scroll *Scroll) (string, error) {
-	jarID := scroll.JarID
-	scrollID := scroll.ID
-
+func (bucket *S3Bucket) GetScrollFetchURL(jarID, scrollID string) (string, error) {
 	key := filepath.Join(jarID, scrollID)
 	presignClient := s3.NewPresignClient(bucket.Client)
-
 	fetchURL, err := presignClient.PresignGetObject(
 		context.TODO(),
 		&s3.GetObjectInput{

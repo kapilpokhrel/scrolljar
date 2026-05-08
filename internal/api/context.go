@@ -11,15 +11,15 @@ type contextKey string // using builtin type for contextKey is discouraged as it
 
 const userContextKey = contextKey("user")
 
-func (app *Application) contextSetUser(r *http.Request, user *database.User) *http.Request {
+func (app *Application) contextSetUser(r *http.Request, user *database.UserAccount) *http.Request {
 	ctx := context.WithValue(r.Context(), userContextKey, user)
 	return r.WithContext(ctx)
 }
 
-func (app *Application) contextGetUser(r *http.Request) *database.User {
-	user, ok := r.Context().Value(userContextKey).(*database.User)
+func (app *Application) contextGetUser(r *http.Request) *database.UserAccount {
+	user, ok := r.Context().Value(userContextKey).(*database.UserAccount)
 	if !ok {
-		panic("mssing user in request context")
+		panic("missing user in request context")
 	}
 	return user
 }

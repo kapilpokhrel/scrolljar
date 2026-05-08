@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kapilpokhrel/scrolljar/internal/database"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/time/rate"
 )
 
@@ -27,52 +27,8 @@ func (app *Application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-/*
-http {
-    # 1. TOTAL SERVER LIMIT (All users combined)
-    # Using a static string "all" as the key makes this apply globally.
-    limit_req_zone "all" zone=server_wide:10m rate=50r/s;
-
-    # 2. PER-ENDPOINT LIMITS (Per IP)
-    # These still use $binary_remote_addr to prevent one IP from hogging the endpoint.
-    limit_req_zone $binary_remote_addr zone=read_limit:10m rate=10r/s;
-    limit_req_zone $binary_remote_addr zone=write_limit:10m rate=5r/s;
-
-    # 3. MAX CONCURRENT CONNECTIONS (Global "User" Capacity)
-    # Limits the total number of active connections the server will handle at once.
-    limit_conn_zone "all_conns" zone=total_conns:10m;
-
-    server {
-        listen 80;
-
-        # Apply the global connection limit to the whole server
-        limit_conn total_conns 1000;
-
-        # READ Endpoint
-        location /api/read {
-            # Checks both the global 50r/s bucket AND the per-IP 10r/s bucket
-            limit_req zone=server_wide burst=20;
-            limit_req zone=read_limit burst=5 nodelay;
-
-            proxy_pass http://backend_read;
-        }
-
-        # WRITE Endpoint
-        location /api/write {
-            # Checks both the global 50r/s bucket AND the per-IP 5r/s bucket
-            limit_req zone=server_wide burst=20;
-            limit_req zone=write_limit burst=2 nodelay;
-
-            proxy_pass http://backend_write;
-        }
-    }
-}
-*/
-
 func (app *Application) globalRateLimiter(next http.Handler) http.Handler {
-	// use nginx rate limiter
 	limiter := rate.NewLimiter(rate.Limit(app.config.Rate.GlobalRps), app.config.Rate.GlobalBps)
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !limiter.Allow() {
 			app.globalMaxRateResponse(w, r)
@@ -83,8 +39,6 @@ func (app *Application) globalRateLimiter(next http.Handler) http.Handler {
 }
 
 func (app *Application) ipRateLimiter(limitType string) func(http.Handler) http.Handler {
-	// use nginx per location based rate limit
-
 	var rps float64
 	var bps int
 	switch limitType {
@@ -114,7 +68,6 @@ func (app *Application) ipRateLimiter(limitType string) func(http.Handler) http.
 		for {
 			<-ticker.C
 			mu.Lock()
-
 			for host, client := range clients {
 				if time.Since(client.lastSeen) > time.Minute*5 {
 					delete(clients, host)
@@ -134,10 +87,10 @@ func (app *Application) ipRateLimiter(limitType string) func(http.Handler) http.
 			mu.Lock()
 			limiter, ok := clients[host]
 			if !ok {
-				clients[host] = clientLimiter{limiter: rate.NewLimiter(
-					rate.Limit(rps),
-					bps,
-				), lastSeen: time.Now()}
+				clients[host] = clientLimiter{
+					limiter:  rate.NewLimiter(rate.Limit(rps), bps),
+					lastSeen: time.Now(),
+				}
 				limiter = clients[host]
 			}
 			mu.Unlock()
@@ -146,7 +99,6 @@ func (app *Application) ipRateLimiter(limitType string) func(http.Handler) http.
 				app.ipMaxRateResponse(w, r)
 				return
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -165,43 +117,37 @@ func (app *Application) authenticateUser(next http.Handler) http.Handler {
 		headerParts := strings.Split(authHeader, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
 			app.invalidAuthenticationTokenResponse(w, r)
+			return
 		}
 
 		tokenHash := sha256.Sum256([]byte(headerParts[1]))
-
-		token := &database.Token{
-			TokenHash: tokenHash[:],
-		}
-
-		if err := app.models.Token.GetTokenByHash(r.Context(), token); err != nil {
+		tokenRow, err := app.store.GetTokenByHash(r.Context(), tokenHash[:])
+		if err != nil {
 			switch {
-			case errors.Is(err, database.ErrNoRecord):
+			case errors.Is(err, pgx.ErrNoRows):
 				app.invalidAuthenticationTokenResponse(w, r)
 			default:
 				app.serverErrorResponse(w, r, err)
-
 			}
 			return
 		}
 
-		user := &database.User{}
-		user.ID = token.UserID
-
-		if err := app.models.Users.GetByID(r.Context(), user); err != nil {
+		user, err := app.store.GetUserByID(r.Context(), tokenRow.UserID)
+		if err != nil {
 			app.serverErrorResponse(w, r, err)
 			return
 		}
-		next.ServeHTTP(w, app.contextSetUser(r, user))
+		next.ServeHTTP(w, app.contextSetUser(r, &user))
 	})
 }
 
 func (app *Application) requireAuthenticatedUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := app.contextGetUser(r)
-		if user == nil {
+		if app.contextGetUser(r) == nil {
 			app.authenticationRequiredResponse(w, r)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
+

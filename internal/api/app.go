@@ -44,7 +44,7 @@ type Application struct {
 	config    Config
 	dbPool    *pgxpool.Pool
 	logger    *slog.Logger
-	models    database.Models
+	store     *database.Store
 	mailer    mailer.Mailer
 	wg        sync.WaitGroup
 	startTime time.Time
@@ -56,7 +56,7 @@ func parseFlags() Config {
 	var cfg Config
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fs.IntVar(&cfg.Port, "port", 8008, "API server port")
-	fs.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|pord))")
+	fs.StringVar((*string)(&cfg.Env), "env", "dev", "Environment (dev|prod)")
 
 	cfg.DB.RegisterFlags(fs)
 	cfg.SMTP.RegisterFlags(fs)
@@ -89,7 +89,7 @@ func NewApplication(logger *slog.Logger) (*Application, error) {
 		config:    cfg,
 		dbPool:    dbPool,
 		logger:    logger,
-		models:    database.NewModels(dbPool),
+		store:     database.NewStore(dbPool),
 		mailer:    mailer.New(cfg.SMTP),
 		startTime: time.Now(),
 		s3Bucket:  s3Bucket,
@@ -104,7 +104,7 @@ func (app *Application) Serve() error {
 		Handler:           app.GetRouter(),
 		IdleTimeout:       time.Minute,
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      3 * time.Minute, // Large timeout is needed for upload/. We can have more granular control with TimeoutHandler
+		WriteTimeout:      3 * time.Minute,
 		ErrorLog:          slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 	}
 
@@ -112,13 +112,10 @@ func (app *Application) Serve() error {
 
 	go func() {
 		quit := make(chan os.Signal, 1)
-
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 		app.logger.Info("shutting down server", "signal", (<-quit).String())
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
-
 		app.wg.Wait()
 		shutDownError <- server.Shutdown(ctx)
 	}()

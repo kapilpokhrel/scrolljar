@@ -2,7 +2,7 @@ package: spec
 generate:
   std-http-server: true
   models: true
-output: internal/api/spec/gen.go
+output: internal/spec/gen.go
 output-options:
   prefer-skip-optional-pointer: true
   name-normalizer: ToCamelCaseWithInitialisms

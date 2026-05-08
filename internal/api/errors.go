@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	spec "github.com/kapilpokhrel/scrolljar/internal/api/spec"
+	"github.com/kapilpokhrel/scrolljar/internal/spec"
 )
 
 // This file serves as wrapper to send json error
