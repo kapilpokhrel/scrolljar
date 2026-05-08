@@ -180,47 +180,36 @@ func (app *Application) isJarCreator(r *http.Request, jarID string) (bool, error
 	return ownerID.Valid && ownerID.Int64 == user.ID, nil
 }
 
-// requireJarCreator writes the appropriate error and returns false if the caller should stop.
-func (app *Application) requireJarCreator(w http.ResponseWriter, r *http.Request, jarID string) bool {
+// requireJarCreator returns errInvalidCreds if the caller is not the jar owner.
+func (app *Application) requireJarCreator(r *http.Request, jarID string) error {
 	ok, err := app.isJarCreator(r, jarID)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return false
+		return err
 	}
 	if !ok {
-		app.invalidCredentialsResponse(w, r)
-		return false
+		return errInvalidCreds
 	}
-	return true
+	return nil
 }
 
-// handleDBErr handles not-found vs server error. Returns true if the handler should stop.
-func (app *Application) handleDBErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if err == nil {
-		return false
-	}
+// dbErr maps pgx.ErrNoRows to errNotFound; all other errors pass through as-is.
+func dbErr(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
-		app.notFoundResponse(w, r)
-	} else {
-		app.serverErrorResponse(w, r, err)
+		return errNotFound
 	}
-	return true
+	return err
 }
 
-// handleDBErrWithConflict is like handleDBErr but also maps ErrEditConflict to 409.
-func (app *Application) handleDBErrWithConflict(w http.ResponseWriter, r *http.Request, err error) bool {
-	if err == nil {
-		return false
-	}
+// dbErrWithConflict is like dbErr but also maps ErrEditConflict to errEditConflict.
+func dbErrWithConflict(err error) error {
 	switch {
 	case errors.Is(err, database.ErrEditConflict):
-		app.errorResponse(w, r, http.StatusConflict, spec.Error{Error: "edit conflict; please try again"})
+		return errEditConflict
 	case errors.Is(err, pgx.ErrNoRows):
-		app.notFoundResponse(w, r)
+		return errNotFound
 	default:
-		app.serverErrorResponse(w, r, err)
+		return err
 	}
-	return true
 }
 
 var utf8Err = errors.New("invalid UTF-8")

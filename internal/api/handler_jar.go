@@ -12,17 +12,21 @@ import (
 const durYear = time.Hour * 25 * 365
 
 func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
+	if err := app.createJar(w, r); err != nil {
+		app.handleError(w, r, err)
+	}
+}
+
+func (app *Application) createJar(w http.ResponseWriter, r *http.Request) error {
 	input := spec.CreateJarInput{}
 	if err := app.readJSON(w, r, &input); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
+		return errBadRequest(err)
 	}
 
 	user := app.contextGetUser(r)
 	v := input.Validate(user != nil)
 	if !v.Valid() {
-		app.validationErrorResponse(w, r, spec.ValidationError(*v))
-		return
+		return errValidation(spec.ValidationError(*v))
 	}
 
 	jarArg := buildInsertJarParams(input, user)
@@ -36,16 +40,14 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 
 	jar, scrolls, err := app.store.CreateJarWithScrolls(r.Context(), jarArg, scrollArgs)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		return err
 	}
 
 	createdScrolls := make([]spec.CreateScrollOutput, len(scrolls))
 	for i, scroll := range scrolls {
 		uploadToken, err := createScrollUploadToken(scroll.ID, scroll.JarID, user)
 		if err != nil {
-			app.serverErrorResponse(w, r, err)
-			return
+			return err
 		}
 		createdScrolls[i] = spec.CreateScrollOutput{
 			Scroll:      dbScrollToSpec(scroll),
@@ -53,61 +55,64 @@ func (app *Application) CreateJar(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
+	return app.writeJSON(w, http.StatusOK, spec.CreateJarOutput{
 		Jar:     dbJarToSpec(jar),
 		Scrolls: createdScrolls,
-	}, nil); err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
+	}, nil)
 }
 
 func (app *Application) GetJar(w http.ResponseWriter, r *http.Request, id spec.JarID, params spec.GetJarParams) {
-	jar, err := app.store.GetJar(r.Context(), id)
-	if app.handleDBErr(w, r, err) {
-		return
-	}
-
-	if err := checkJarPassword(jar, params.XPastePassword); err != nil {
-		app.invalidCredentialsResponse(w, r)
-		return
-	}
-
-	if err := app.writeJSON(w, http.StatusOK, dbJarToSpec(jar), nil); err != nil {
-		app.serverErrorResponse(w, r, err)
+	if err := app.getJar(w, r, id, params); err != nil {
+		app.handleError(w, r, err)
 	}
 }
 
-func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id spec.JarID) {
-	if _, err := app.store.GetJar(r.Context(), id); app.handleDBErr(w, r, err) {
-		return
+func (app *Application) getJar(w http.ResponseWriter, r *http.Request, id spec.JarID, params spec.GetJarParams) error {
+	jar, err := app.store.GetJar(r.Context(), id)
+	if err != nil {
+		return dbErr(err)
 	}
+	if err := checkJarPassword(jar, params.XPastePassword); err != nil {
+		return errInvalidCreds
+	}
+	return app.writeJSON(w, http.StatusOK, dbJarToSpec(jar), nil)
+}
 
+func (app *Application) GetJarScrolls(w http.ResponseWriter, r *http.Request, id spec.JarID) {
+	if err := app.getJarScrolls(w, r, id); err != nil {
+		app.handleError(w, r, err)
+	}
+}
+
+func (app *Application) getJarScrolls(w http.ResponseWriter, r *http.Request, id spec.JarID) error {
+	if _, err := app.store.GetJar(r.Context(), id); err != nil {
+		return dbErr(err)
+	}
 	scrolls, err := app.store.GetScrollsByJar(r.Context(), id)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		return err
 	}
-
 	out := make([]spec.Scroll, len(scrolls))
 	for i, s := range scrolls {
 		out[i] = dbScrollToSpec(s)
 	}
-	if err := app.writeJSON(w, http.StatusOK, out, nil); err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
+	return app.writeJSON(w, http.StatusOK, out, nil)
 }
 
 func (app *Application) DeleteJar(w http.ResponseWriter, r *http.Request, id spec.JarID) {
-	if !app.requireJarCreator(w, r, id) {
-		return
+	if err := app.deleteJar(w, r, id); err != nil {
+		app.handleError(w, r, err)
+	}
+}
+
+func (app *Application) deleteJar(w http.ResponseWriter, r *http.Request, id spec.JarID) error {
+	if err := app.requireJarCreator(r, id); err != nil {
+		return err
 	}
 	if err := app.store.DeleteJar(r.Context(), id); err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		return err
 	}
-	if err := app.writeJSON(w, http.StatusOK, spec.Message{Message: "scrolljar deleted successfully"}, nil); err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
+	return app.writeJSON(w, http.StatusOK, spec.Message{Message: "scrolljar deleted successfully"}, nil)
 }
 
 func buildInsertJarParams(input spec.CreateJarInput, user *database.UserAccount) database.InsertJarParams {
